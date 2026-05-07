@@ -16,6 +16,9 @@ CLAUDE_DESKTOP_CONFIG = (
     Path("~/Library/Application Support/Claude/claude_desktop_config.json").expanduser()
 )
 
+# Project root: src/petromcp/cli.py -> src/petromcp -> src -> <root>
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 
 def install_into_config(
     config_path: Path, server_name: str, command: str, args: list[str]
@@ -48,11 +51,21 @@ def _cmd_install(args: argparse.Namespace) -> int:
     if args.client != "claude-desktop":
         print(f"unsupported client: {args.client}", file=sys.stderr)
         return 2
+    # `--project` pins uv to the petromcp checkout regardless of where Claude
+    # Desktop spawns the process from. `--no-sync` prevents the implicit sync
+    # that re-applies UF_HIDDEN to .pth files on macOS.
     install_into_config(
         CLAUDE_DESKTOP_CONFIG,
         server_name="petromcp",
         command="uv",
-        args=["run", "petromcp", "serve"],
+        args=[
+            "run",
+            "--no-sync",
+            "--project",
+            str(PROJECT_ROOT),
+            "petromcp",
+            "serve",
+        ],
     )
     print(f"installed petromcp into {CLAUDE_DESKTOP_CONFIG}")
     return 0

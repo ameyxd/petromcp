@@ -1,6 +1,9 @@
 import json
 from pathlib import Path
 
+import pytest
+
+from petromcp import cli
 from petromcp.cli import install_into_config, uninstall_from_config
 
 
@@ -39,3 +42,20 @@ def test_uninstall_is_idempotent(tmp_path: Path) -> None:
     cfg = tmp_path / "claude_desktop_config.json"
     cfg.write_text(json.dumps({"mcpServers": {}}))
     uninstall_from_config(cfg, server_name="petromcp")  # should not raise
+
+
+def test_install_command_pins_project_and_skips_sync(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cfg = tmp_path / "claude_desktop_config.json"
+    monkeypatch.setattr(cli, "CLAUDE_DESKTOP_CONFIG", cfg)
+
+    rc = cli.main(["install", "--client", "claude-desktop"])
+    assert rc == 0
+
+    args = json.loads(cfg.read_text())["mcpServers"]["petromcp"]["args"]
+    assert "--no-sync" in args
+    assert "--project" in args
+    project_idx = args.index("--project")
+    assert args[project_idx + 1] == str(cli.PROJECT_ROOT)
+    assert args[-2:] == ["petromcp", "serve"]
