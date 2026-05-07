@@ -9,5 +9,6 @@ build/
 .coverage
 htmlcov/
 .claude/
+.omc/state/
 examples/sample_data/synthetic_*.las
 evals/results/
