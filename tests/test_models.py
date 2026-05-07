@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
+from petromcp.models.compare import ComparisonReport, CurveDiff
 from petromcp.models.las import (
     CurveData,
     CurveInfo,
@@ -55,3 +56,26 @@ def test_models_are_frozen() -> None:
     s = CurveSummary(well_name="W", curves=[CurveStats(name="GR")])
     with pytest.raises(ValidationError):
         s.well_name = "X"  # type: ignore[misc]
+
+
+def test_curve_diff_is_frozen() -> None:
+    d = CurveDiff(
+        name="GR", in_a=True, in_b=True, units_a="GAPI", units_b="GAPI", units_match=True
+    )
+    with pytest.raises(ValidationError):
+        d.name = "X"  # type: ignore[misc]
+
+
+def test_comparison_report_minimal() -> None:
+    r = ComparisonReport(
+        well_a="A",
+        well_b="B",
+        common_curves=["GR"],
+        unique_to_a=[],
+        unique_to_b=["RHOB"],
+        depth_overlap=None,
+        unit_diffs=[],
+        flags=["no depth overlap"],
+    )
+    assert r.flags == ["no depth overlap"]
+    assert r.depth_overlap is None
