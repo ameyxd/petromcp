@@ -19,6 +19,16 @@ CLAUDE_DESKTOP_CONFIG = (
 # Project root: src/petromcp/cli.py -> src/petromcp -> src -> <root>
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+USER_CONFIG_PATH = Path("~/.petromcp/config.json").expanduser()
+
+DEFAULT_USER_CONFIG: dict[str, object] = {
+    "allowed_paths": [],
+    "logging": {
+        "enabled": True,
+        "log_file": "~/.petromcp/access.log",
+    },
+}
+
 
 def install_into_config(
     config_path: Path, server_name: str, command: str, args: list[str]
@@ -38,6 +48,21 @@ def uninstall_from_config(config_path: Path, server_name: str) -> None:
     if server_name in servers:
         del servers[server_name]
         config_path.write_text(json.dumps(data, indent=2))
+
+
+def _read_user_config(path: Path) -> dict[str, object]:
+    if not path.exists():
+        return dict(DEFAULT_USER_CONFIG)
+    return json.loads(path.read_text())  # type: ignore[no-any-return]
+
+
+def _write_user_config(path: Path, data: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2))
+
+
+def _resolve_user_path(p: str) -> str:
+    return str(Path(p).expanduser().resolve())
 
 
 def _cmd_serve(_: argparse.Namespace) -> int:
@@ -77,6 +102,60 @@ def _cmd_uninstall(_: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_config_show(_: argparse.Namespace) -> int:
+    if not USER_CONFIG_PATH.exists():
+        print(
+            f"# (default — no config file at {USER_CONFIG_PATH})",
+            file=sys.stderr,
+        )
+        print(json.dumps(DEFAULT_USER_CONFIG, indent=2))
+        return 0
+    print(USER_CONFIG_PATH.read_text())
+    return 0
+
+
+def _cmd_config_init(_: argparse.Namespace) -> int:
+    if USER_CONFIG_PATH.exists():
+        print(
+            f"config already exists at {USER_CONFIG_PATH}; "
+            "remove it manually to re-init",
+            file=sys.stderr,
+        )
+        return 2
+    _write_user_config(USER_CONFIG_PATH, dict(DEFAULT_USER_CONFIG))
+    print(f"wrote default config to {USER_CONFIG_PATH}")
+    return 0
+
+
+def _cmd_config_add_path(args: argparse.Namespace) -> int:
+    target = _resolve_user_path(args.path)
+    data = _read_user_config(USER_CONFIG_PATH)
+    raw = data.setdefault("allowed_paths", [])
+    paths: list[str] = raw if isinstance(raw, list) else []
+    data["allowed_paths"] = paths
+    if target in paths:
+        print(f"already in allowlist: {target}")
+        return 0
+    paths.append(target)
+    _write_user_config(USER_CONFIG_PATH, data)
+    print(f"added {target}")
+    return 0
+
+
+def _cmd_config_remove_path(args: argparse.Namespace) -> int:
+    target = _resolve_user_path(args.path)
+    data = _read_user_config(USER_CONFIG_PATH)
+    raw = data.get("allowed_paths", [])
+    paths: list[str] = raw if isinstance(raw, list) else []
+    if target not in paths:
+        print(f"not in allowlist: {target}", file=sys.stderr)
+        return 0
+    data["allowed_paths"] = [p for p in paths if p != target]
+    _write_user_config(USER_CONFIG_PATH, data)
+    print(f"removed {target}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="petromcp")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -90,6 +169,23 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("uninstall", help="remove from Claude Desktop config").set_defaults(
         func=_cmd_uninstall
     )
+
+    config = sub.add_parser("config", help="manage ~/.petromcp/config.json")
+    config_sub = config.add_subparsers(dest="config_cmd", required=True)
+    config_sub.add_parser("show", help="print the current config").set_defaults(
+        func=_cmd_config_show
+    )
+    config_sub.add_parser("init", help="write a default config if missing").set_defaults(
+        func=_cmd_config_init
+    )
+    add_path = config_sub.add_parser("add-path", help="add a directory to allowed_paths")
+    add_path.add_argument("path")
+    add_path.set_defaults(func=_cmd_config_add_path)
+    remove_path = config_sub.add_parser(
+        "remove-path", help="remove a directory from allowed_paths"
+    )
+    remove_path.add_argument("path")
+    remove_path.set_defaults(func=_cmd_config_remove_path)
     return p
 
 
