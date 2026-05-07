@@ -27,3 +27,27 @@ every point inside that interval with no downsampling.
 
 Walks Claude through a standard well-log QC pass. Invoke from the prompt
 picker in your host application.
+
+## compare_well_logs
+
+`compare_well_logs(path_a: str, path_b: str) -> ComparisonReport`
+
+Compares two LAS files. Reports common curves, curves unique to each file,
+depth-range overlap, per-curve unit consistency, and human-readable issue
+flags suitable for the LLM to quote. Strict case-sensitive matching on
+mnemonics and units in v0.2; a normalisation layer can be added later if
+real-world use turns up false mismatches.
+
+## convert_units
+
+`convert_units(value: float, from_unit: str, to_unit: str) -> float`
+
+Converts a value between supported petroleum units. Strict case-sensitive
+matching: `Ft` is not `ft`. Raises `UnitConversionError` for unsupported
+pairs. Supported pairs as of v0.2:
+
+- Length: ft <-> m
+- Pressure: psi <-> kPa, psi <-> bar
+- Volume: bbl <-> m3
+- Temperature: degF <-> degC
+- Permeability: mD <-> m2

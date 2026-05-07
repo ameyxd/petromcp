@@ -13,11 +13,15 @@ log. 34 tests passing.
 v0.1 design doc: `docs/superpowers/specs/2026-05-06-petromcp-las-slice-design.md`
 v0.1 plan: `docs/superpowers/plans/2026-05-06-petromcp-las-slice.md`
 
-Next slice is v0.2 — Tier 1 of `SPEC_petromcp.md` "Post-v0.1 roadmap":
-`compare_well_logs`, `convert_units`, `petromcp config show/add-path`,
-bad-LAS fixture corpus, pyproject description trim. Tier 2 (DLIS, SEG-Y,
-pump cards, Plotly) and Tier 3 (release workflow, more hosts, walkthroughs)
-are deferred to subsequent slices.
+v0.2 shipped on 2026-05-07 (tag `0.2`). Added: `compare_well_logs`,
+`convert_units`, four `petromcp config` subcommands, bad-LAS fixture corpus,
+pyproject description trim. v0.2 design:
+`docs/superpowers/specs/2026-05-07-petromcp-v0.2-tier1-design.md`. v0.2 plan:
+`docs/superpowers/plans/2026-05-07-petromcp-v0.2-tier1.md`.
+
+Next is Tier 2 — DLIS slice gets its own design + plan + execution cycle.
+SEG-Y, pump cards, Plotly, release workflow, additional hosts, and
+walkthroughs follow after DLIS lands.
 
 ## Conventions
 

@@ -66,6 +66,18 @@ Optional fields:
 Logging is on by default. Tool calls are recorded one per line as
 `<timestamp> tool=<name> path=<resolved>`.
 
+## Manage the config from the CLI
+
+If you would rather not edit JSON by hand:
+
+    petromcp config init                       # write a default config if missing
+    petromcp config show                       # print the current config
+    petromcp config add-path ~/petroleum/wells # append to allowed_paths
+    petromcp config remove-path /old/path      # remove from allowed_paths
+
+`add-path` and `remove-path` are idempotent. `init` will not overwrite an
+existing config; remove the file manually if you want a clean slate.
+
 ## Uninstall
 
     make uninstall-claude
