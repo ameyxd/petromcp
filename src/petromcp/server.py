@@ -12,9 +12,11 @@ from pathlib import Path
 from fastmcp import FastMCP
 
 from petromcp.config import load_config
+from petromcp.models.compare import ComparisonReport
 from petromcp.models.las import CurveData, CurveSummary, LASSummary
 from petromcp.models.shared import DepthRange
 from petromcp.prompts.qc_a_well_log import PROMPT_NAME, PROMPT_TEMPLATE
+from petromcp.tools.compare import compare_well_logs as _compare_well_logs
 from petromcp.tools.las import (
     read_las_curve as _read_las_curve,
 )
@@ -24,6 +26,7 @@ from petromcp.tools.las import (
 from petromcp.tools.las import (
     summarize_las_curves as _summarize_las_curves,
 )
+from petromcp.utils.units import convert_units as _convert_units
 
 
 def build_app(allowed_paths: list[Path] | None = None) -> FastMCP:
@@ -61,6 +64,19 @@ def build_app(allowed_paths: list[Path] | None = None) -> FastMCP:
             else None
         )
         return _read_las_curve(path, curve_name, depth_range=depth_range, allowed_paths=roots)
+
+    @app.tool()
+    def compare_well_logs(path_a: str, path_b: str) -> ComparisonReport:
+        """Compare two LAS files. Reports common curves, depth overlap,
+        unit consistency, and human-readable issue flags."""
+        return _compare_well_logs(path_a, path_b, roots)
+
+    @app.tool()
+    def convert_units(value: float, from_unit: str, to_unit: str) -> float:
+        """Convert a value between supported petroleum units. Strict
+        case-sensitive matching. Supported pairs: ft<->m, psi<->kPa,
+        psi<->bar, bbl<->m3, degF<->degC, mD<->m2."""
+        return _convert_units(value, from_unit, to_unit)
 
     @app.prompt(name=PROMPT_NAME)
     def qc_a_well_log() -> str:
