@@ -15,13 +15,16 @@ import lasio
 import numpy as np
 
 from petromcp.models.las import (
+    CurveData,
     CurveInfo,
     CurveStats,
     CurveSummary,
     GapSummary,
     LASSummary,
 )
+from petromcp.models.shared import DepthRange
 from petromcp.utils.path_validator import validate_path
+from petromcp.utils.summarizer import downsample
 
 DEFAULT_SAMPLE_CAP = 500
 
@@ -118,3 +121,62 @@ def summarize_las_curves(path: str, allowed_paths: Sequence[Path | str]) -> Curv
         )
 
     return CurveSummary(well_name=_header_value(las, "WELL"), curves=rows)
+
+
+def read_las_curve(
+    path: str,
+    curve_name: str,
+    depth_range: DepthRange | None = None,
+    allowed_paths: Sequence[Path | str] | None = None,
+) -> CurveData:
+    """Return depth + value arrays for one curve.
+
+    Default behaviour returns a downsampled view (every Nth point) capped at
+    `DEFAULT_SAMPLE_CAP` samples. An explicit `depth_range` returns every
+    point inside that range with no downsampling.
+    """
+    if allowed_paths is None:
+        raise ValueError("allowed_paths is required")
+
+    _, las = _open(path, allowed_paths)
+    if curve_name not in las.curves:
+        raise KeyError(f"curve '{curve_name}' not found in {path}")
+
+    depth = np.asarray(las.index, dtype=float)
+    values = np.asarray(las[curve_name], dtype=float)
+    original_count = int(len(depth))
+
+    if depth_range is not None:
+        mask = (depth >= depth_range.start) & (depth <= depth_range.stop)
+        depth = depth[mask]
+        values = values[mask]
+        downsampled = False
+    else:
+        depth, did_sample = downsample(depth, DEFAULT_SAMPLE_CAP)
+        values, _ = downsample(values, DEFAULT_SAMPLE_CAP)
+        downsampled = did_sample
+
+    units = next(
+        (str(c.unit) if c.unit else None for c in las.curves if c.mnemonic == curve_name),
+        None,
+    )
+    eff_range = (
+        depth_range
+        if depth_range is not None
+        else DepthRange(
+            start=float(depth[0]) if len(depth) else 0.0,
+            stop=float(depth[-1]) if len(depth) else 0.0,
+        )
+    )
+
+    return CurveData(
+        curve_name=curve_name,
+        units=units,
+        depth_units=_depth_units(las),
+        depths=[float(x) for x in depth],
+        values=[float(v) if np.isfinite(v) else None for v in values],
+        depth_range=eff_range,
+        sample_count=int(len(depth)),
+        downsampled=downsampled,
+        original_count=original_count,
+    )
