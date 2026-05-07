@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from petromcp.tools.las import read_las_file
+from petromcp.tools.las import read_las_file, summarize_las_curves
 from petromcp.utils.path_validator import PathNotAllowedError
 
 
@@ -24,3 +24,14 @@ def test_read_las_file_denies_outside_allowlist(
     other = tmp_path_factory.mktemp("other")
     with pytest.raises(PathNotAllowedError):
         read_las_file(str(tiny_las), [other])
+
+
+def test_summarize_las_curves_stats(tiny_las: Path, allowlist: list[Path]) -> None:
+    s = summarize_las_curves(str(tiny_las), allowlist)
+    names = {c.name for c in s.curves}
+    assert {"GR", "RHOB"} <= names
+    gr = next(c for c in s.curves if c.name == "GR")
+    assert gr.min is not None and gr.max is not None and gr.max > gr.min
+    assert gr.mean is not None
+    assert gr.stddev is not None and gr.stddev >= 0.0
+    assert 0.0 <= gr.gap_percentage <= 100.0

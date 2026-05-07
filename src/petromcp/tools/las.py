@@ -16,6 +16,8 @@ import numpy as np
 
 from petromcp.models.las import (
     CurveInfo,
+    CurveStats,
+    CurveSummary,
     GapSummary,
     LASSummary,
 )
@@ -88,3 +90,31 @@ def read_las_file(path: str, allowed_paths: Sequence[Path | str]) -> LASSummary:
         total_points=int(len(depth)),
         gap_summary=_gap_summary(np.asarray(depth, dtype=float), step),
     )
+
+
+def summarize_las_curves(path: str, allowed_paths: Sequence[Path | str]) -> CurveSummary:
+    """Per-curve summary statistics across the full file."""
+    _, las = _open(path, allowed_paths)
+    depth = np.asarray(las.index, dtype=float)  # type: ignore[attr-defined]
+    total = len(depth)
+
+    rows: list[CurveStats] = []
+    for c in las.curves:  # type: ignore[attr-defined]
+        if c.mnemonic == "DEPT":
+            continue
+        data = np.asarray(c.data, dtype=float)
+        finite = data[np.isfinite(data)]
+        gap_pct = round((1.0 - finite.size / total) * 100.0, 3) if total else 0.0
+        rows.append(
+            CurveStats(
+                name=str(c.mnemonic),
+                units=str(c.unit) if c.unit else None,
+                min=float(finite.min()) if finite.size else None,
+                max=float(finite.max()) if finite.size else None,
+                mean=float(finite.mean()) if finite.size else None,
+                stddev=float(finite.std()) if finite.size else None,
+                gap_percentage=gap_pct,
+            )
+        )
+
+    return CurveSummary(well_name=_header_value(las, "WELL"), curves=rows)
