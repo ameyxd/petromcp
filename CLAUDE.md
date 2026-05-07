@@ -45,6 +45,17 @@ Implementation plan: `docs/superpowers/plans/2026-05-06-petromcp-las-slice.md`.
 - CI matrix is 3.12 only. Add 3.10 once the slice ships if there's audience demand.
 - PyPI publish happens after the DLIS slice lands, not this one.
 
+## Known gotchas
+
+- **macOS hidden-flag bug on `.pth` files (uv 0.5.9).** After any `uv sync`
+  on macOS, the editable-install `.pth` files in `.venv/lib/python*/site-packages/`
+  get the `UF_HIDDEN` flag set, and Python 3.12+ silently skips hidden `.pth`
+  files. Result: `uv run petromcp` fails with `ModuleNotFoundError`. Fix:
+  `chflags nohidden .venv/lib/python*/site-packages/*.pth`. `uv run pytest`
+  is unaffected because the test runner uses `[tool.pytest.ini_options]
+  pythonpath = [".", "src"]` rather than the `.pth` mechanism. Document this
+  in INSTALL.md and consider adding a `make sync` target that wraps both.
+
 ## What NOT to do
 
 - Do not add tools for DLIS, SEG-Y, or pump cards in this slice. Empty stub
