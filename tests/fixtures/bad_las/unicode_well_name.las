@@ -1,0 +1,16 @@
+~Version
+ VERS.   2.0 : CWLS LOG ASCII STANDARD - VERSION 2.0
+ WRAP.    NO : ONE LINE PER DEPTH STEP
+~Well
+ STRT.ft     5000.0000 : START DEPTH
+ STOP.ft     5001.0000 : STOP DEPTH
+ STEP.ft        0.5000 : STEP
+ NULL.       -999.2500 : NULL VALUE
+ WELL.       Pozo-Ñoño : WELL
+~Curves
+ DEPT.ft : Depth
+ GR  .GAPI : Gamma Ray
+~ASCII
+5000.0000 50.0
+5000.5000 51.0
+5001.0000 52.0
