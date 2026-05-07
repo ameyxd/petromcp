@@ -38,7 +38,9 @@ def validate_path(target: Path | str, allowed: Sequence[Path | str]) -> Path:
             continue
 
     msg = (
-        f"petromcp: path {target_path} is not in allowed_paths. "
-        "Add it to ~/.petromcp/config.json or invoke with --temp-allow <path>."
+        f"petromcp: path {target_path} is not in allowed_paths "
+        "(symlinks are resolved before this check, so the displayed path "
+        "may differ from the literal one you passed). "
+        "Add the directory to ~/.petromcp/config.json and restart the host."
     )
     raise PathNotAllowedError(msg)

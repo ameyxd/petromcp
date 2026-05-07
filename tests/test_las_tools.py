@@ -82,3 +82,18 @@ def test_read_las_curve_unknown_curve_raises(
 ) -> None:
     with pytest.raises(KeyError):
         read_las_curve(str(tiny_las), "NOPE", allowed_paths=allowlist)
+
+
+def test_read_las_file_rejects_non_las_content(
+    tmp_path: Path, allowlist: list[Path]
+) -> None:
+    """A non-LAS file inside the allowlist should raise, not silently parse.
+
+    Locks in lasio's behaviour: it raises KeyError with a message that names
+    the format. If lasio ever changes this contract, the test breaks and we
+    revisit how we surface the error to the LLM.
+    """
+    fake = tmp_path / "not_a_log.las"
+    fake.write_text("this is not a LAS file at all\njust some text\n")
+    with pytest.raises(KeyError, match="LAS file"):
+        read_las_file(str(fake), allowlist)
