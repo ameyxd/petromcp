@@ -48,4 +48,4 @@ reportMissingTypeStubs = false
 [tool.pytest.ini_options]
 addopts = "-ra -q"
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = [".", "src"]
