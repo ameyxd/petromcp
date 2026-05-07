@@ -23,14 +23,18 @@ from petromcp.models.las import (
     LASSummary,
 )
 from petromcp.models.shared import DepthRange
+from petromcp.utils.access_log import log_access
 from petromcp.utils.path_validator import validate_path
 from petromcp.utils.summarizer import downsample
 
 DEFAULT_SAMPLE_CAP = 500
 
 
-def _open(path: str, allowed: Sequence[Path | str]) -> tuple[Path, lasio.LASFile]:
+def _open(
+    path: str, allowed: Sequence[Path | str], tool: str
+) -> tuple[Path, lasio.LASFile]:
     resolved = validate_path(path, allowed)
+    log_access(tool, resolved)
     return resolved, lasio.read(str(resolved))
 
 
@@ -62,7 +66,7 @@ def _gap_summary(depth: np.ndarray, step: float) -> GapSummary:
 
 def read_las_file(path: str, allowed_paths: Sequence[Path | str]) -> LASSummary:
     """Return header-level metadata about a LAS file. No curve data."""
-    _, las = _open(path, allowed_paths)
+    _, las = _open(path, allowed_paths, "read_las_file")
     depth = las.index  # type: ignore[attr-defined]
     step = float(getattr(las.well.get("STEP"), "value", 0.0)) if hasattr(las.well, "get") else 0.0  # type: ignore[attr-defined]
 
@@ -97,7 +101,7 @@ def read_las_file(path: str, allowed_paths: Sequence[Path | str]) -> LASSummary:
 
 def summarize_las_curves(path: str, allowed_paths: Sequence[Path | str]) -> CurveSummary:
     """Per-curve summary statistics across the full file."""
-    _, las = _open(path, allowed_paths)
+    _, las = _open(path, allowed_paths, "summarize_las_curves")
     depth = np.asarray(las.index, dtype=float)  # type: ignore[attr-defined]
     total = len(depth)
 
@@ -138,7 +142,7 @@ def read_las_curve(
     if allowed_paths is None:
         raise ValueError("allowed_paths is required")
 
-    _, las = _open(path, allowed_paths)
+    _, las = _open(path, allowed_paths, "read_las_curve")
     if curve_name not in las.curves:
         raise KeyError(f"curve '{curve_name}' not found in {path}")
 

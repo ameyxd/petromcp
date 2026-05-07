@@ -10,14 +10,29 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 DEFAULT_CONFIG_PATH = Path("~/.petromcp/config.json").expanduser()
 
 
+class LoggingConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool = True
+    log_file: Path = Path("~/.petromcp/access.log").expanduser()
+
+    @field_validator("log_file", mode="before")
+    @classmethod
+    def _expand(cls, v: object) -> Path:
+        if isinstance(v, str):
+            return Path(v).expanduser()
+        if isinstance(v, Path):
+            return v.expanduser()
+        raise ValueError("log_file must be a string or Path")
+
+
 class Config(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     allowed_paths: list[Path] = Field(default_factory=list)
-    read_only: bool = True
-    max_file_size_mb: int = 100
     default_depth_units: str = "ft"
     default_pressure_units: str = "psi"
+    logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
     @field_validator("allowed_paths", mode="before")
     @classmethod
