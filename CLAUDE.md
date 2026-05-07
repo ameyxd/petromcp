@@ -6,9 +6,18 @@ to Claude and other MCP-compatible hosts. Local-first. Synthetic data only by
 default. The full spec lives at `SPEC_petromcp.md` in the repo root.
 
 ## Where we are
-Building the LAS vertical slice first. Design doc:
-`docs/superpowers/specs/2026-05-06-petromcp-las-slice-design.md`.
-Implementation plan: `docs/superpowers/plans/2026-05-06-petromcp-las-slice.md`.
+v0.1 shipped on 2026-05-07 (tag `0.1`). LAS slice only: three tools, QC prompt,
+allowlist, synthetic generator, eval, Claude Desktop install, file-based access
+log. 34 tests passing.
+
+v0.1 design doc: `docs/superpowers/specs/2026-05-06-petromcp-las-slice-design.md`
+v0.1 plan: `docs/superpowers/plans/2026-05-06-petromcp-las-slice.md`
+
+Next slice is v0.2 — Tier 1 of `SPEC_petromcp.md` "Post-v0.1 roadmap":
+`compare_well_logs`, `convert_units`, `petromcp config show/add-path`,
+bad-LAS fixture corpus, pyproject description trim. Tier 2 (DLIS, SEG-Y,
+pump cards, Plotly) and Tier 3 (release workflow, more hosts, walkthroughs)
+are deferred to subsequent slices.
 
 ## Conventions
 

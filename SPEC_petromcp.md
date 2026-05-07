@@ -350,6 +350,36 @@ The standard Show HN + r/ClaudeAI playbook will get this maybe 100 stars. The pe
 **Risk 5: Someone else ships a similar tool first.**
 *Mitigation:* As of May 2026, no public petroleum-format MCP server exists with reasonable coverage. Window is open. Speed matters.
 
+## Post-v0.1 roadmap
+
+v0.1 (tag `0.1`, shipped 2026-05-07) covers LAS only: three tools, the QC prompt, the path allowlist, the synthetic generator, the eval, and Claude Desktop install. The remaining items below are sorted by *additivity* — Tier 1 cannot regress what shipped; later tiers introduce new code paths that need their own design + plan + execution cycle.
+
+### Tier 1 — recommended v0.2 scope
+
+Short, additive, tightens what v0.1 already does. Pure extensions to the existing LAS surface.
+
+1. **`compare_well_logs(path_a, path_b) -> ComparisonReport`.** Pure LAS-on-LAS. Reports common curves, depth-overlap, unit-consistency check, obvious-issue flags. Pairs with eval scenario 02.
+2. **`convert_units(value, from_unit, to_unit) -> float`.** Pure utility. ft/m, psi/kPa, bbl/m3, mD/m².
+3. **`petromcp config show` and `petromcp config add-path`.** CLI subcommands so users do not have to hand-edit `~/.petromcp/config.json`.
+4. **Bad-LAS fixture corpus.** A small set of malformed LAS files (missing `~Well`, comma-decimal locale, broken line endings, unicode in headers) plus tests that lock in graceful failure.
+5. **Tighten `pyproject.toml` description.** Currently lists DLIS, SEG-Y, and pump cards alongside LAS. Same overpromise the README hero had. One-line fix.
+
+### Tier 2 — additive, larger; each gets its own slice
+
+6. **DLIS slice.** `read_dlis_file`, `list_dlis_channels`, `read_dlis_channel`. Same TDD pattern as LAS. Pin `dlisio`; CI-watch upstream.
+7. **SEG-Y headers slice.** `extract_segy_headers`. Headers only; full traces remain out of scope per the v1 non-goals.
+8. **Pump card slice.** `parse_pump_card_csv` + `diagnose_pump_card` prompt.
+9. **Plotly resources.** `well_log_plot://` and `pump_card_plot://` URIs returning HTML payloads.
+
+### Tier 3 — operational and launch readiness
+
+10. **Cursor and Codex CLI install scripts** in the existing `petromcp install` subcommand.
+11. **Eval scenarios 02 (compare wells), 03 (pump card), 04 (seismic header).**
+12. **`.github/workflows/release.yml`** — PyPI publish on tag. Defer until DLIS lands.
+13. **Weekly FastMCP-float CI job** to catch upstream breaks.
+14. **Walkthrough markdowns** under `examples/walkthroughs/`. Backbone for the launch GIF.
+15. **`--temp-allow <path>` CLI flag** for one-off reads without editing config.
+
 ## Stretch goals
 
 1. WITSML support (real-time drilling data XML).
