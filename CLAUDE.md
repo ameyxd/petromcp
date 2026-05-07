@@ -50,11 +50,11 @@ Implementation plan: `docs/superpowers/plans/2026-05-06-petromcp-las-slice.md`.
 - **macOS hidden-flag bug on `.pth` files (uv 0.5.9).** After any `uv sync`
   on macOS, the editable-install `.pth` files in `.venv/lib/python*/site-packages/`
   get the `UF_HIDDEN` flag set, and Python 3.12+ silently skips hidden `.pth`
-  files. Result: `uv run petromcp` fails with `ModuleNotFoundError`. Fix:
-  `chflags nohidden .venv/lib/python*/site-packages/*.pth`. `uv run pytest`
-  is unaffected because the test runner uses `[tool.pytest.ini_options]
-  pythonpath = [".", "src"]` rather than the `.pth` mechanism. Document this
-  in INSTALL.md and consider adding a `make sync` target that wraps both.
+  files. Result: `uv run petromcp` fails with `ModuleNotFoundError`. Two-part
+  fix, both already in the `Makefile`: (1) the `unhide` target clears the
+  flag with `chflags nohidden`; (2) every `uv run` invocation uses
+  `--no-sync` so the implicit pre-run sync doesn't re-hide the flag. Always
+  drive the project through `make`, not raw `uv run`, on macOS.
 
 ## What NOT to do
 

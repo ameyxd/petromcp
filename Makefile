@@ -41,31 +41,36 @@ else
 	@true
 endif
 
-test:
-	uv run pytest
+# All `uv run` invocations below use --no-sync. `uv run` without that flag
+# triggers an implicit `uv sync`, which on macOS re-applies UF_HIDDEN to
+# the editable-install .pth files and breaks `petromcp` again. Sync happens
+# in the `setup`/`sync` target only.
 
-lint:
-	uv run ruff check .
+test: unhide
+	uv run --no-sync pytest
 
-typecheck:
-	uv run pyright
+lint: unhide
+	uv run --no-sync ruff check .
+
+typecheck: unhide
+	uv run --no-sync pyright
 
 check: lint typecheck test
 
-run:
-	uv run petromcp serve
+run: unhide
+	uv run --no-sync petromcp serve
 
-install-claude:
-	uv run petromcp install --client claude-desktop
+install-claude: unhide
+	uv run --no-sync petromcp install --client claude-desktop
 
-uninstall-claude:
-	uv run petromcp uninstall
+uninstall-claude: unhide
+	uv run --no-sync petromcp uninstall
 
-generate:
-	uv run python -m examples.sample_data.generate
+generate: unhide
+	uv run --no-sync python -m examples.sample_data.generate
 
-eval:
-	uv run python -m evals.run_eval --scenario evals/scenarios/01_well_log_qc.yaml
+eval: unhide
+	uv run --no-sync python -m evals.run_eval --scenario evals/scenarios/01_well_log_qc.yaml
 
 clean:
 	rm -rf .pytest_cache .ruff_cache .eval_tmp
