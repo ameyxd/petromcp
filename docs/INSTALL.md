@@ -47,13 +47,24 @@ Clear the flag after every `uv sync`:
 Create `~/.petromcp/config.json`:
 
     {
-      "allowed_paths": ["~/petroleum/wells"],
-      "read_only": true,
-      "max_file_size_mb": 100
+      "allowed_paths": ["~/petroleum/wells"]
     }
 
 petromcp refuses to read any file outside `allowed_paths`. This is the
 deliberate default; see [DATA_PRIVACY.md](DATA_PRIVACY.md).
+
+Optional fields:
+
+    {
+      "allowed_paths": ["~/petroleum/wells"],
+      "logging": {
+        "enabled": true,
+        "log_file": "~/.petromcp/access.log"
+      }
+    }
+
+Logging is on by default. Tool calls are recorded one per line as
+`<timestamp> tool=<name> path=<resolved>`.
 
 ## Uninstall
 
