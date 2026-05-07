@@ -15,3 +15,4 @@ jobs:
       - run: uv run ruff check .
       - run: uv run pyright
       - run: uv run pytest
+      - run: uv run python -m evals.run_eval --scenario evals/scenarios/01_well_log_qc.yaml

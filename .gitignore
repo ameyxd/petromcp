@@ -12,3 +12,4 @@ htmlcov/
 .omc/state/
 examples/sample_data/synthetic_*.las
 evals/results/
+.eval_tmp/
