@@ -42,6 +42,12 @@ Implementation plan: `docs/superpowers/plans/2026-05-06-petromcp-las-slice.md`.
 - Synthetic curves should reflect plausible petrophysical relationships
   (RHOB and NPHI inversely correlated in shale, etc.) so the QC eval surfaces
   real findings rather than uniform noise. Tracked for the synthetic generator.
+- The `qc_a_well_log` prompt encodes specific QC heuristics (RHOB 1.8-3.0,
+  GR non-negative, gap thresholds above 1%, expected curve set for an
+  open-hole triple combo). These are defensible defaults but should be
+  sanity-checked by an SME — a working petrophysicist — before launch
+  outreach. Wrong heuristics in the launch demo would hurt credibility
+  with the audience that matters most.
 - CI matrix is 3.12 only. Add 3.10 once the slice ships if there's audience demand.
 - PyPI publish happens after the DLIS slice lands, not this one.
 

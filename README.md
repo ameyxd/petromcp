@@ -1,14 +1,16 @@
 # petromcp
 
-An MCP server that lets Claude read your LAS, DLIS, SEG-Y, and pump card
-files directly. Local-first. Synthetic data only by default.
+An MCP server that lets Claude read your LAS well log files directly.
+Local-first. Synthetic data only by default. DLIS, SEG-Y, and pump card
+support coming next.
 
 ## What this gives you
 
-LLM hosts cannot read binary petroleum formats. petromcp wraps the
-established open-source parsers (`lasio`, `dlisio`, `segyio`) and exposes
-them as MCP tools, so you can have a conversation with your data instead of
-copy-pasting curve values into chat.
+LLM hosts cannot read binary or semi-structured petroleum formats. petromcp
+wraps the established open-source parsers — `lasio` for v0.1, with `dlisio`
+and `segyio` queued for the next slices — and exposes them as MCP tools, so
+you can have a conversation with your data instead of copy-pasting curve
+values into chat.
 
 ## Privacy first
 
@@ -32,6 +34,18 @@ Then create `~/.petromcp/config.json`:
 
 Restart Claude Desktop. Ask: "what's wrong with this well log?" and point
 it at a `.las` file inside that directory.
+
+## Try it without your own data
+
+If you don't have a LAS file handy, generate the synthetic sample first:
+
+    make generate
+
+This writes `examples/sample_data/synthetic_well_01.las` (gitignored,
+reproducible from a fixed seed). Point your `allowed_paths` at
+`examples/sample_data` instead of `~/petroleum/wells`, restart Claude
+Desktop, and ask it to QC the file. The generator deliberately inserts a
+small RHOB gap so the QC has something to flag.
 
 ## Tools (LAS, v0.1)
 
