@@ -19,6 +19,11 @@ pyproject description trim. v0.2 design:
 `docs/superpowers/specs/2026-05-07-petromcp-v0.2-tier1-design.md`. v0.2 plan:
 `docs/superpowers/plans/2026-05-07-petromcp-v0.2-tier1.md`.
 
+v0.3 (2026-05-08) ships two bug fixes from the v0.2 bad-LAS corpus:
+UTF-8 well names are now decoded correctly via a new `read_lasio` helper
+that tries UTF-8 first and falls back to latin-1; truncated LAS files
+return a degraded `LASSummary` instead of propagating `lasio`'s IndexError.
+
 Next is Tier 2 — DLIS slice gets its own design + plan + execution cycle.
 SEG-Y, pump cards, Plotly, release workflow, additional hosts, and
 walkthroughs follow after DLIS lands.
