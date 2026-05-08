@@ -1,15 +1,32 @@
+# Python build artefacts and virtualenv
 .venv/
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+
+# Test and lint caches
 .pytest_cache/
 .ruff_cache/
-dist/
-build/
-*.egg-info/
+.mypy_cache/
+.cache/
 .coverage
 htmlcov/
+
+# Editor and OS metadata
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# Project-internal session/state directories (not for the public repo)
 .claude/
-.omc/state/
+.omc/
+
+# Generated demo data and ephemeral run output
 examples/sample_data/synthetic_*.las
 evals/results/
 .eval_tmp/

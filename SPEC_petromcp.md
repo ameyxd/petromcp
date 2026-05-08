@@ -28,7 +28,7 @@ The MCP ecosystem has 500+ servers and 97M monthly SDK downloads as of early 202
 
 The petroleum industry has a stack of file formats that are obscure to outsiders but daily reality to insiders:
 - LAS (Log ASCII Standard): well log data, the most common format, well-supported by `lasio`.
-- DLIS / RP66: binary log data, more complex than LAS, supported by `dlisio` (open-sourced and maintained by Equinor and previously contributors at Schlumberger).
+- DLIS / RP66: binary log data, more complex than LAS, supported by `dlisio` (an actively maintained open-source library).
 - SEG-Y: seismic data; full data is huge, but headers are tractable and useful in conversation. `segyio` handles this.
 - Dynacard / pump card data: artificial-lift diagnostic data. Not standardized; commonly stored as CSV time-series.
 - WITSML: real-time drilling data XML. Out of scope for v1, listed as v2.
@@ -313,7 +313,7 @@ The standard Show HN + r/ClaudeAI playbook will get this maybe 100 stars. The pe
 - [ ] Repo polished. README has GIF. DATA_PRIVACY.md is solid.
 - [ ] Sample data generator works and is documented.
 - [ ] Eval results published.
-- [ ] Reach out to known petroleum-AI people (Hoss Belyadi, Shahab Mohaghegh's circles, the Equinor dlisio team). Offer them an early look. A retweet from a known voice in petroleum data science is worth thousands of generic developer impressions.
+- [ ] Reach out to recognized voices in petroleum data science. Offer them an early look. A retweet from a known industry voice is worth thousands of generic developer impressions.
 
 **Day 0 (Tuesday-Thursday):**
 - [ ] Show HN at 8 AM ET. The HN crowd will respect the technical novelty even though they aren't the primary user. Title: "Show HN: petromcp, MCP server for petroleum data formats (LAS, DLIS, SEG-Y, pump cards)."
@@ -338,16 +338,13 @@ The standard Show HN + r/ClaudeAI playbook will get this maybe 100 stars. The pe
 **Risk 1: Petroleum operators are nervous about pointing a "Claude tool" at their data.**
 *Mitigation:* DATA_PRIVACY.md is the lead document. The allowlist-default posture is non-negotiable. The first launch tweet leads with privacy, not features.
 
-**Risk 2: Schlumberger or another large operator notices and asks awkward questions about your involvement, given your past employment.**
-*Mitigation:* This is a real concern. The mitigation is twofold. First: every line of code in this project must be written from scratch using publicly documented libraries (lasio, dlisio, segyio). No internal SLB code, no internal SLB documentation, no work-product overlap. Second: when promoting, do not lead with "I'm a former Schlumberger engineer." Lead with the tool. Your experience informed the tool selection (you know which formats matter); it did not produce any of the code. If asked, be candid and concise.
-
-**Risk 3: dlisio's API changes.**
+**Risk 2: dlisio's API changes.**
 *Mitigation:* Pin versions. CI runs against the latest published dlisio weekly to detect breaks early.
 
-**Risk 4: Audience doesn't show up.**
+**Risk 3: Audience doesn't show up.**
 *Mitigation:* If post-launch traffic is anemic, the LinkedIn + SPE channels are the recovery path. Patience. This audience moves slower than developer Twitter.
 
-**Risk 5: Someone else ships a similar tool first.**
+**Risk 4: Someone else ships a similar tool first.**
 *Mitigation:* As of May 2026, no public petroleum-format MCP server exists with reasonable coverage. Window is open. Speed matters.
 
 ## Post-v0.1 roadmap

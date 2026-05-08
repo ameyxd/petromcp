@@ -7,7 +7,7 @@ support coming next.
 ## What this gives you
 
 LLM hosts cannot read binary or semi-structured petroleum formats. petromcp
-wraps the established open-source parsers — `lasio` for v0.1, with `dlisio`
+wraps the established open-source parsers — `lasio` for v0.2, with `dlisio`
 and `segyio` queued for the next slices — and exposes them as MCP tools, so
 you can have a conversation with your data instead of copy-pasting curve
 values into chat.
@@ -16,36 +16,47 @@ values into chat.
 
 petromcp runs on your machine. It refuses to read any file outside an
 explicit allowlist. There is no telemetry, no phone-home, no automatic
-updates. See [DATA_PRIVACY.md](docs/DATA_PRIVACY.md) before pointing it at
-real data.
+updates. Read [docs/DATA_PRIVACY.md](docs/DATA_PRIVACY.md) before pointing
+it at real data.
 
-## Quick start
+## Install
 
-    git clone https://github.com/<you>/petromcp
+Requires Python 3.10+, [uv](https://docs.astral.sh/uv/), and Claude Desktop.
+
+    git clone https://github.com/ameyxd/petromcp
     cd petromcp
     make setup
     make install-claude
 
-Then create `~/.petromcp/config.json`:
+Restart Claude Desktop. The petromcp tools and the `qc_a_well_log` prompt
+should appear in a new conversation. macOS notes and troubleshooting:
+[docs/INSTALL.md](docs/INSTALL.md).
 
-    {
-      "allowed_paths": ["~/petroleum/wells"]
-    }
+## Configure
 
-Restart Claude Desktop. Ask: "what's wrong with this well log?" and point
-it at a `.las` file inside that directory.
+By default petromcp can read nothing. Tell it which directories are fair
+game:
 
-## Try it without your own data
+    uv run --no-sync petromcp config init
+    uv run --no-sync petromcp config add-path ~/petroleum/wells
 
-If you don't have a LAS file handy, generate the synthetic sample first:
+Or, if you want to try it without your own data, generate the synthetic
+sample and allowlist that:
 
     make generate
+    uv run --no-sync petromcp config add-path "$(pwd)/examples/sample_data"
 
-This writes `examples/sample_data/synthetic_well_01.las` (gitignored,
-reproducible from a fixed seed). Point your `allowed_paths` at
-`examples/sample_data` instead of `~/petroleum/wells`, restart Claude
-Desktop, and ask it to QC the file. The generator deliberately inserts a
-small RHOB gap so the QC has something to flag.
+Restart Claude Desktop after editing the allowlist.
+
+## Use
+
+Open a new conversation in Claude Desktop and ask, in plain language:
+
+    What's wrong with this well log? /path/to/well.las
+    Compare these two wells: /path/to/A.las and /path/to/B.las
+    Convert 1500 psi to kPa.
+
+Claude picks the right tool, reads the file through petromcp, and answers.
 
 ## Tools (LAS, v0.2)
 
@@ -57,6 +68,8 @@ small RHOB gap so the QC has something to flag.
 | `compare_well_logs`     | Common curves, depth overlap, unit consistency, flags |
 | `convert_units`         | ft<->m, psi<->kPa, psi<->bar, bbl<->m3, degF<->degC, mD<->m2 |
 | `qc_a_well_log` prompt  | Walks Claude through a standard QC pass               |
+
+Full reference: [docs/TOOLS_REFERENCE.md](docs/TOOLS_REFERENCE.md).
 
 DLIS, SEG-Y, and pump card support land in subsequent releases.
 

@@ -265,7 +265,7 @@ Implementation plan: `docs/superpowers/plans/2026-05-06-petromcp-las-slice.md`.
 
 - Do not add tools for DLIS, SEG-Y, or pump cards in this slice. Empty stub
   files rot; we add them when their slice begins.
-- Do not introduce internal Schlumberger code, documentation, or design notes.
+- Do not introduce internal code, documentation, or design notes from prior employers.
   Every line in this repo derives from public libraries (`lasio`, etc.) and
   publicly documented formats.
 - Do not bypass the allowlist in tests via `monkeypatch` of the validator.
