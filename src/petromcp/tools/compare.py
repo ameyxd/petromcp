@@ -17,13 +17,14 @@ import lasio
 from petromcp.models.compare import ComparisonReport, CurveDiff
 from petromcp.models.shared import DepthRange
 from petromcp.utils.access_log import log_access
+from petromcp.utils.lasio_open import read_lasio
 from petromcp.utils.path_validator import validate_path
 
 
 def _open(path: str, allowed: Sequence[Path | str]) -> tuple[Path, lasio.LASFile]:
     resolved = validate_path(path, allowed)
     log_access("compare_well_logs", resolved)
-    return resolved, lasio.read(str(resolved))
+    return resolved, read_lasio(resolved)
 
 
 def _well_name(las: lasio.LASFile) -> str | None:

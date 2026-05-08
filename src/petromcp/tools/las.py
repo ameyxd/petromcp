@@ -24,6 +24,7 @@ from petromcp.models.las import (
 )
 from petromcp.models.shared import DepthRange
 from petromcp.utils.access_log import log_access
+from petromcp.utils.lasio_open import read_lasio
 from petromcp.utils.path_validator import validate_path
 from petromcp.utils.summarizer import downsample
 
@@ -35,7 +36,7 @@ def _open(
 ) -> tuple[Path, lasio.LASFile]:
     resolved = validate_path(path, allowed)
     log_access(tool, resolved)
-    return resolved, lasio.read(str(resolved))
+    return resolved, read_lasio(resolved)
 
 
 def _header_value(las: lasio.LASFile, key: str) -> str | None:
@@ -65,9 +66,29 @@ def _gap_summary(depth: np.ndarray, step: float) -> GapSummary:
 
 
 def read_las_file(path: str, allowed_paths: Sequence[Path | str]) -> LASSummary:
-    """Return header-level metadata about a LAS file. No curve data."""
+    """Return header-level metadata about a LAS file. No curve data.
+
+    A LAS file with header sections but no `~Curves`/`~ASCII` block (a
+    truncated log) returns a degraded summary with `total_points=0` and
+    an empty `curves` list, rather than propagating `lasio`'s IndexError.
+    """
     _, las = _open(path, allowed_paths, "read_las_file")
-    depth = las.index  # type: ignore[attr-defined]
+    try:
+        depth = las.index  # type: ignore[attr-defined]
+        if len(depth) == 0:
+            raise IndexError("zero-length LAS index")
+    except IndexError:
+        return LASSummary(
+            well_name=_header_value(las, "WELL"),
+            operator=_header_value(las, "COMP"),
+            depth_start=0.0,
+            depth_stop=0.0,
+            depth_step=0.0,
+            depth_units=_depth_units(las),
+            curves=[],
+            total_points=0,
+            gap_summary=GapSummary(),
+        )
     step = float(getattr(las.well.get("STEP"), "value", 0.0)) if hasattr(las.well, "get") else 0.0  # type: ignore[attr-defined]
 
     curves: list[CurveInfo] = []

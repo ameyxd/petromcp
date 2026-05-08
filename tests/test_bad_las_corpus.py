@@ -25,12 +25,11 @@ def test_empty_file_raises() -> None:
         read_las_file(str(FIXTURES / "empty.las"), _allowlist())
 
 
-def test_truncated_file_raises() -> None:
-    # Spec expected a degraded summary with zero curves, but lasio raises
-    # IndexError on a file that has header sections but no ~Curves or ~ASCII.
-    # Surprise: follow-up issue to decide whether petromcp should catch this.
-    with pytest.raises(IndexError):
-        read_las_file(str(FIXTURES / "truncated.las"), _allowlist())
+def test_truncated_file_returns_summary_with_zero_curves() -> None:
+    s = read_las_file(str(FIXTURES / "truncated.las"), _allowlist())
+    assert s.well_name == "TRUNCATED"
+    assert [c.name for c in s.curves] == []
+    assert s.total_points == 0
 
 
 def test_crlf_file_parses_normally() -> None:
@@ -43,8 +42,5 @@ def test_crlf_file_parses_normally() -> None:
 
 def test_unicode_well_name_parses() -> None:
     s = read_las_file(str(FIXTURES / "unicode_well_name.las"), _allowlist())
-    assert s.well_name is not None
-    # lasio reads the UTF-8 file as latin-1, producing mojibake: "Pozo-\xc3\x91o\xc3\xb1o".
-    # Characters above 127 are still present, so the check holds — but the
-    # well name is garbled. Follow-up: pass encoding="utf-8" to lasio.read().
-    assert any(ord(c) > 127 for c in s.well_name)
+    # Correctly decoded UTF-8, not latin-1 mojibake.
+    assert s.well_name == "Pozo-Ñoño"

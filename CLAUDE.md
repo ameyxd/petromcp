@@ -63,16 +63,14 @@ walkthroughs follow after DLIS lands.
   with the audience that matters most.
 - CI matrix is 3.12 only. Add 3.10 once the slice ships if there's audience demand.
 - PyPI publish happens after the DLIS slice lands, not this one.
-- **Bad-LAS corpus surfaced two real follow-ups (locked in via tests in v0.2):**
-  1. A truncated LAS (header sections only, no `~Curves`/`~ASCII`) raises
-     `IndexError: list index out of range` from `lasio` rather than producing
-     a degraded `LASSummary`. petromcp could catch this and return a
-     zero-curve summary so the LLM gets a structured answer instead of an
-     opaque exception.
-  2. `lasio.read()` parses non-ASCII LAS files as latin-1 by default, so a
-     UTF-8 file with `Pozo-Ñoño` becomes mojibake. Fix is to thread an
-     `encoding` parameter through (default `utf-8` with a `latin-1`
-     fallback). Real bug for v0.3 or earlier.
+- **Bad-LAS corpus follow-ups — fixed in v0.3:**
+  1. Truncated LAS (header sections only) used to propagate `IndexError`
+     from lasio. `read_las_file` now catches it and returns a degraded
+     `LASSummary` with `total_points=0` and an empty curves list.
+  2. `lasio.read()` defaults to latin-1, which mangled UTF-8 well names
+     like `Pozo-Ñoño` into mojibake. Both `tools/las.py` and `tools/compare.py`
+     now route through `petromcp.utils.lasio_open.read_lasio`, which tries
+     UTF-8 first and falls back to latin-1 on `UnicodeDecodeError`.
 
 ## Known gotchas
 
