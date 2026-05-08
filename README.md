@@ -47,20 +47,23 @@ reproducible from a fixed seed). Point your `allowed_paths` at
 Desktop, and ask it to QC the file. The generator deliberately inserts a
 small RHOB gap so the QC has something to flag.
 
-## Tools (LAS, v0.1)
+## Tools (LAS, v0.2)
 
-| Tool                    | What it does                                       |
-|-------------------------|----------------------------------------------------|
-| `read_las_file`         | Header-level summary of a LAS file                 |
-| `summarize_las_curves`  | Per-curve min, max, mean, stddev, gap percentage   |
-| `read_las_curve`        | Depths and values for one curve, with sampling cap |
-| `qc_a_well_log` prompt  | Walks Claude through a standard QC pass            |
+| Tool                    | What it does                                          |
+|-------------------------|-------------------------------------------------------|
+| `read_las_file`         | Header-level summary of a LAS file                    |
+| `summarize_las_curves`  | Per-curve min, max, mean, stddev, gap percentage      |
+| `read_las_curve`        | Depths and values for one curve, with sampling cap    |
+| `compare_well_logs`     | Common curves, depth overlap, unit consistency, flags |
+| `convert_units`         | ft<->m, psi<->kPa, psi<->bar, bbl<->m3, degF<->degC, mD<->m2 |
+| `qc_a_well_log` prompt  | Walks Claude through a standard QC pass               |
 
 DLIS, SEG-Y, and pump card support land in subsequent releases.
 
 ## Status
 
-v0.1 ships the LAS slice. The remaining formats are tracked in
+v0.2 ships the LAS slice plus a comparison tool, a units utility, and
+config-management CLI subcommands. The remaining formats are tracked in
 [SPEC_petromcp.md](SPEC_petromcp.md). The non-goals list there is real;
 read it before filing feature requests.
 
