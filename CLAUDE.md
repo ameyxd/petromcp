@@ -69,6 +69,14 @@ DLIS lands.
   file and `serve --allow-path` — which are unioned, never substituted. The
   flag exists because a bundle installer needs to pass the directories the
   user picked in a folder dialog; both empty still means read nothing.
+- **The PyPI distribution is `petroleum-mcp`, everything else is `petromcp`.**
+  PyPI rejects `petromcp` as too similar to `petro-mcp` (an unrelated,
+  active petroleum-engineering MCP server); the names collapse to the same
+  string once separators are stripped. The import package, console script,
+  FastMCP server name, and repo stay `petromcp`. The single source of truth
+  is `petromcp.DISTRIBUTION_NAME`, which `__init__.py` uses to read its own
+  version and `packaging/mcpb/build.py` asserts against `pyproject`. Get
+  this wrong and `uvx` in the bundle silently fetches the wrong package.
 - **PyPI is the distribution channel.** The MCPB bundle deliberately does not
   vendor dependencies: numpy and pydantic-core wheels are tagged for one
   exact CPython minor, so a vendored bundle silently breaks on any other

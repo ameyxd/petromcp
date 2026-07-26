@@ -30,7 +30,7 @@ Add petromcp to your MCP host's config — no clone, no build:
   "mcpServers": {
     "petromcp": {
       "command": "uvx",
-      "args": ["petromcp", "serve"]
+      "args": ["petroleum-mcp", "serve"]
     }
   }
 }
@@ -53,8 +53,8 @@ To work on petromcp rather than just use it:
 By default petromcp can read nothing. Tell it which directories are fair
 game:
 
-    uvx petromcp config init
-    uvx petromcp config add-path ~/petroleum/wells
+    uvx petroleum-mcp config init
+    uvx petroleum-mcp config add-path ~/petroleum/wells
 
 Or, if you want to try it without your own data, generate the synthetic
 sample from a checkout and allowlist that:

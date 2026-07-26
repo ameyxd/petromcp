@@ -15,13 +15,13 @@ That runs lint, types, and tests, then writes three files into `dist/`:
 
 | File | Destination |
 |------|-------------|
-| `petromcp-<version>-py3-none-any.whl` | PyPI |
-| `petromcp-<version>.tar.gz` | PyPI |
+| `petroleum_mcp-<version>-py3-none-any.whl` | PyPI |
+| `petroleum_mcp-<version>.tar.gz` | PyPI |
 | `petromcp-<version>.mcpb` | Smithery |
 
 ## 1. PyPI
 
-    uv publish dist/petromcp-*.whl dist/petromcp-*.tar.gz
+    uv publish dist/petroleum_mcp-*.whl dist/petroleum_mcp-*.tar.gz
 
 `uv publish` prompts for a token, or reads `UV_PUBLISH_TOKEN`.
 
@@ -34,7 +34,7 @@ release.
 Verify with a clean cache before moving on — everything downstream depends
 on this working:
 
-    uvx --no-cache petromcp==<version> --help
+    uvx --no-cache petroleum-mcp==<version> --help
 
 ### On TestPyPI
 
@@ -48,10 +48,10 @@ The thing TestPyPI would catch — a wheel that does not install or run — is
 better caught locally, and more thoroughly:
 
     uv build
-    uv venv --python 3.10 /tmp/probe && uv pip install --python /tmp/probe/bin/python dist/petromcp-*.whl
+    uv venv --python 3.10 /tmp/probe && uv pip install --python /tmp/probe/bin/python dist/petroleum_mcp-*.whl
     /tmp/probe/bin/petromcp --help
 
-Then exercise the real stdio path with `uvx --from ./dist/petromcp-*.whl
+Then exercise the real stdio path with `uvx --from ./dist/petroleum_mcp-*.whl
 petromcp serve --allow-path <dir>` and confirm both an allowed read and a
 refused one. That is a stronger check than a TestPyPI round trip.
 
@@ -79,7 +79,7 @@ any later edit to `glama.json`.
 ## 3. Smithery
 
 **Do not publish here until step 1 is done and verified.** The bundle
-launches `uvx petromcp==<version>`; published against a version that is not
+launches `uvx petroleum-mcp==<version>`; published against a version that is not
 on PyPI, every install fails with a package-not-found error. A listing that
 fails on first try is worse than no listing.
 
@@ -102,7 +102,7 @@ vendor verification checks.
 `dist/petromcp-<version>.mcpb` is about 4KB — a manifest, the README, and the
 licence. It does not vendor Python dependencies. It launches:
 
-    uvx petromcp==<version> serve --allow-path <directories the user picked>
+    uvx petroleum-mcp==<version> serve --allow-path <directories the user picked>
 
 Vendoring was tried and rejected on evidence. numpy, pydantic-core and 27
 other extension modules ship wheels tagged for one exact CPython minor
@@ -136,11 +136,11 @@ disagrees with `pyproject.toml`, and a test fails if `__init__.py` drifts,
 but `server.json` is checked by neither.
 
 - [ ] `pyproject.toml` `version`
-- [ ] `packaging/mcpb/manifest.json` `version` **and** the `petromcp==<version>` pin in `args`
+- [ ] `packaging/mcpb/manifest.json` `version` **and** the `petroleum-mcp==<version>` pin in `args`
 - [ ] `server.json` `version` and `packages[0].version`
 - [ ] `CHANGELOG.md` has an entry
 - [ ] `make release-artifacts` passes
 - [ ] tag pushed (no `v` prefix): `git tag <version> && git push origin <version>`
-- [ ] PyPI published and `uvx --no-cache petromcp==<version> --help` works
+- [ ] PyPI published and `uvx --no-cache petroleum-mcp==<version> --help` works
 - [ ] Smithery bundle published
 - [ ] Glama claim re-run if `glama.json` changed

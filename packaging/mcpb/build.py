@@ -28,12 +28,30 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 DIST = ROOT / "dist"
 
+DISTRIBUTION_NAME = "petroleum-mcp"
+
 
 def project_version() -> str:
     for line in (ROOT / "pyproject.toml").read_text().splitlines():
         if line.startswith("version = "):
             return line.split("=", 1)[1].strip().strip('"')
     raise SystemExit("could not find `version` in pyproject.toml")
+
+
+def check_distribution_name() -> None:
+    """The manifest pin is worthless if it names a distribution pyproject
+    does not publish under."""
+    for line in (ROOT / "pyproject.toml").read_text().splitlines():
+        if line.startswith("name = "):
+            declared = line.split("=", 1)[1].strip().strip('"')
+            if declared != DISTRIBUTION_NAME:
+                raise SystemExit(
+                    f"pyproject publishes as {declared!r} but "
+                    f"petromcp.DISTRIBUTION_NAME is {DISTRIBUTION_NAME!r}. "
+                    "`uvx` in the bundle would fetch the wrong package."
+                )
+            return
+    raise SystemExit("could not find `name` in pyproject.toml")
 
 
 def load_manifest(version: str) -> dict:
@@ -44,7 +62,10 @@ def load_manifest(version: str) -> dict:
             f"manifest.json says {manifest['version']} but pyproject says "
             f"{version}. Update packaging/mcpb/manifest.json."
         )
-    pin = f"petromcp=={version}"
+    # The bundle launches `uvx <distribution>==<version>`. That is the PyPI
+    # distribution name (`petroleum-mcp`), not the import package or the
+    # console script, which are both still `petromcp`.
+    pin = f"{DISTRIBUTION_NAME}=={version}"
     args = manifest["server"]["mcp_config"]["args"]
     if pin not in args:
         raise SystemExit(
@@ -54,9 +75,56 @@ def load_manifest(version: str) -> dict:
     return manifest
 
 
+def introspect_tools_and_prompts() -> tuple[list[dict], list[dict]]:
+    """Read the tool and prompt metadata off a live server instance.
+
+    Hand-maintained copies in the manifest go stale the moment a signature
+    changes, and nothing catches it — the bundle is metadata, so a wrong
+    entry produces a wrong directory listing rather than a failing test.
+    Generating from the real server removes the possibility.
+
+    Smithery's ServerCard requires `inputSchema` on every tool. Omitting it
+    is a 400 at publish time, one error per tool, so this is not optional
+    detail.
+    """
+    import asyncio
+
+    from petromcp.server import build_app
+
+    app = build_app(allowed_paths=[])
+
+    async def collect() -> tuple[list[dict], list[dict]]:
+        tools = []
+        for name, tool in (await app.get_tools()).items():
+            entry: dict = {"name": name, "inputSchema": tool.parameters}
+            if tool.title:
+                entry["title"] = tool.title
+            if tool.description:
+                entry["description"] = tool.description.strip().split("\n\n")[0]
+            tools.append(entry)
+        prompts = [
+            {"name": name, "description": (p.description or "").strip()}
+            for name, p in (await app.get_prompts()).items()
+        ]
+        return tools, prompts
+
+    return asyncio.run(collect())
+
+
 def build() -> Path:
+    check_distribution_name()
     version = project_version()
     manifest = load_manifest(version)
+
+    tools, prompts = introspect_tools_and_prompts()
+    manifest["tools"] = tools
+    manifest["prompts"] = [
+        # MCPB wants prompt `text`; keep whatever the manifest declares and
+        # only refresh name/description from the server.
+        {**declared, **found}
+        for declared, found in zip(manifest.get("prompts", []), prompts, strict=True)
+    ]
+    print(f"introspected {len(tools)} tools, {len(prompts)} prompt(s) from the server")
 
     DIST.mkdir(exist_ok=True)
     out = DIST / f"petromcp-{version}.mcpb"

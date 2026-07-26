@@ -1,5 +1,9 @@
 [project]
-name = "petromcp"
+# Distribution name only. The import package, the console script, and the
+# MCP server name hosts display are all still `petromcp`. PyPI rejects
+# `petromcp` as too similar to the unrelated `petro-mcp`, which normalizes
+# to the same string once separators are collapsed.
+name = "petroleum-mcp"
 version = "0.4.0"
 description = "Local-first MCP server for petroleum data. Reads LAS well logs; DLIS, SEG-Y, and pump cards next."
 readme = "README.md"

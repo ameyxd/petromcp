@@ -1086,8 +1086,8 @@ wheels = [
 ]
 
 [[package]]
-name = "petromcp"
-version = "0.1.0"
+name = "petroleum-mcp"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },

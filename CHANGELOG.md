@@ -7,6 +7,18 @@ All notable changes to petromcp are recorded here. Versions follow
 
 First release published to PyPI, the Glama directory, and Smithery.
 
+### Distribution name
+
+petromcp is published on PyPI as **`petroleum-mcp`**:
+
+    uvx petroleum-mcp serve
+
+PyPI rejects `petromcp` as too similar to `petro-mcp`, an unrelated
+petroleum-engineering MCP server — the two normalize to the same string
+once separators are collapsed. Only the published distribution name is
+affected. The import package, the `petromcp` command, the server name
+hosts display, and the repository are all unchanged.
+
 ### Fixed
 
 - Truncated LAS files (header sections with no `~ASCII` block) no longer

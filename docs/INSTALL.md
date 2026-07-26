@@ -12,18 +12,23 @@ the same `petromcp serve` command.
 
 ## Quick path (recommended)
 
-petromcp is published on PyPI, so `uvx` can fetch and run it without a
-checkout. Add this to
+petromcp is published on PyPI as **`petroleum-mcp`**, so `uvx` can fetch and
+run it without a checkout. Add this to
 `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
     {
       "mcpServers": {
         "petromcp": {
           "command": "uvx",
-          "args": ["petromcp", "serve"]
+          "args": ["petroleum-mcp", "serve"]
         }
       }
     }
+
+The distribution is `petroleum-mcp` while the command it installs is
+`petromcp`. PyPI rejects `petromcp` as too similar to an unrelated project
+called `petro-mcp`, so only the published name differs; everything you
+interact with is still petromcp.
 
 Restart Claude Desktop. petromcp's tools and the `qc_a_well_log` prompt
 should appear in a new conversation.
@@ -104,7 +109,7 @@ host's server entry than in `~/.petromcp/config.json`:
         "petromcp": {
           "command": "uvx",
           "args": [
-            "petromcp", "serve",
+            "petroleum-mcp", "serve",
             "--allow-path", "/Users/you/petroleum/wells",
             "--allow-path", "/Users/you/petroleum/offset"
           ]
