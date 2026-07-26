@@ -1,10 +1,34 @@
+import math
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from petromcp.models.shared import DepthRange
-from petromcp.tools.las import read_las_curve, read_las_file, summarize_las_curves
+from petromcp.tools.las import (
+    _gap_summary,
+    read_las_curve,
+    read_las_file,
+    summarize_las_curves,
+)
 from petromcp.utils.path_validator import PathNotAllowedError
+
+
+def test_gap_summary_on_zero_span_depth_is_finite() -> None:
+    """A curve whose depths are all identical has zero span. Dividing the gap
+    total by that span produced inf/nan, which is not a valid float field."""
+    depth = np.array([5000.0, 5000.0, 5000.0])
+    g = _gap_summary(depth, step=0.5)
+    assert math.isfinite(g.gap_percentage)
+
+
+def test_gap_summary_counts_a_real_gap() -> None:
+    # 0.5 ft step with a 10 ft jump in the middle.
+    depth = np.array([0.0, 0.5, 1.0, 11.0, 11.5])
+    g = _gap_summary(depth, step=0.5)
+    assert g.total_gaps == 1
+    assert g.largest_gap == pytest.approx(10.0)
+    assert 0.0 < g.gap_percentage <= 100.0
 
 
 def test_read_las_file_returns_summary(tiny_las: Path, allowlist: list[Path]) -> None:

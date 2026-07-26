@@ -17,7 +17,7 @@ import lasio
 from petromcp.models.compare import ComparisonReport, CurveDiff
 from petromcp.models.shared import DepthRange
 from petromcp.utils.access_log import log_access
-from petromcp.utils.lasio_open import read_lasio
+from petromcp.utils.lasio_open import read_lasio, safe_index
 from petromcp.utils.path_validator import validate_path
 
 
@@ -52,12 +52,17 @@ def _curves(las: lasio.LASFile) -> dict[str, str | None]:
     }
 
 
-def _depth_range(las: lasio.LASFile) -> DepthRange:
-    depth = las.index  # type: ignore[attr-defined]
+def _depth_range(las: lasio.LASFile) -> DepthRange | None:
+    """Depth extent of the file, or None when it carries no curve data."""
+    depth = safe_index(las)
+    if len(depth) == 0:
+        return None
     return DepthRange(start=float(depth[0]), stop=float(depth[-1]))
 
 
-def _intersect(a: DepthRange, b: DepthRange) -> DepthRange | None:
+def _intersect(a: DepthRange | None, b: DepthRange | None) -> DepthRange | None:
+    if a is None or b is None:
+        return None
     lo = max(a.start, b.start)
     hi = min(a.stop, b.stop)
     if lo > hi:
@@ -88,7 +93,9 @@ def compare_well_logs(
     unique_a = sorted(set_a - set_b)
     unique_b = sorted(set_b - set_a)
 
-    overlap = _intersect(_depth_range(las_a), _depth_range(las_b))
+    range_a = _depth_range(las_a)
+    range_b = _depth_range(las_b)
+    overlap = _intersect(range_a, range_b)
 
     unit_diffs: list[CurveDiff] = []
     for name in common:
@@ -106,7 +113,12 @@ def compare_well_logs(
         )
 
     flags: list[str] = []
-    if overlap is None:
+    # Distinguish "the intervals don't touch" from "one file has no curve
+    # data at all" — the second is a broken file, not a geological finding.
+    for label, rng in (("A", range_a), ("B", range_b)):
+        if rng is None:
+            flags.append(f"{label} has no depth data (truncated or empty LAS)")
+    if overlap is None and range_a is not None and range_b is not None:
         flags.append("no depth overlap")
     if op_a and op_b and op_a != op_b:
         flags.append(f"different operators ({op_a} vs {op_b})")

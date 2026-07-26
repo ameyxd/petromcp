@@ -24,7 +24,7 @@ from petromcp.models.las import (
 )
 from petromcp.models.shared import DepthRange
 from petromcp.utils.access_log import log_access
-from petromcp.utils.lasio_open import read_lasio
+from petromcp.utils.lasio_open import read_lasio, safe_index
 from petromcp.utils.path_validator import validate_path
 from petromcp.utils.summarizer import downsample
 
@@ -57,7 +57,10 @@ def _gap_summary(depth: np.ndarray, step: float) -> GapSummary:
         return GapSummary()
     diffs = np.diff(depth)
     gaps = diffs[diffs > step * 1.5]
-    pct = float(gaps.sum()) / float(depth[-1] - depth[0]) * 100.0 if len(depth) > 1 else 0.0
+    # A zero span (every depth identical) would divide to inf/nan, which is
+    # not a value we can put in a float field.
+    span = float(depth[-1] - depth[0])
+    pct = float(gaps.sum()) / span * 100.0 if span > 0 else 0.0
     return GapSummary(
         total_gaps=int(len(gaps)),
         largest_gap=float(gaps.max()) if len(gaps) else None,
@@ -73,11 +76,8 @@ def read_las_file(path: str, allowed_paths: Sequence[Path | str]) -> LASSummary:
     an empty `curves` list, rather than propagating `lasio`'s IndexError.
     """
     _, las = _open(path, allowed_paths, "read_las_file")
-    try:
-        depth = las.index  # type: ignore[attr-defined]
-        if len(depth) == 0:
-            raise IndexError("zero-length LAS index")
-    except IndexError:
+    depth = safe_index(las)
+    if len(depth) == 0:
         return LASSummary(
             well_name=_header_value(las, "WELL"),
             operator=_header_value(las, "COMP"),
@@ -110,21 +110,27 @@ def read_las_file(path: str, allowed_paths: Sequence[Path | str]) -> LASSummary:
     return LASSummary(
         well_name=_header_value(las, "WELL"),
         operator=_header_value(las, "COMP"),
-        depth_start=float(depth[0]) if len(depth) else 0.0,
-        depth_stop=float(depth[-1]) if len(depth) else 0.0,
+        depth_start=float(depth[0]),
+        depth_stop=float(depth[-1]),
         depth_step=step,
         depth_units=_depth_units(las),
         curves=curves,
         total_points=int(len(depth)),
-        gap_summary=_gap_summary(np.asarray(depth, dtype=float), step),
+        gap_summary=_gap_summary(depth, step),
     )
 
 
 def summarize_las_curves(path: str, allowed_paths: Sequence[Path | str]) -> CurveSummary:
-    """Per-curve summary statistics across the full file."""
+    """Per-curve summary statistics across the full file.
+
+    A truncated LAS (header sections only) yields a degraded summary with an
+    empty curve list, matching `read_las_file`.
+    """
     _, las = _open(path, allowed_paths, "summarize_las_curves")
-    depth = np.asarray(las.index, dtype=float)  # type: ignore[attr-defined]
+    depth = safe_index(las)
     total = len(depth)
+    if total == 0:
+        return CurveSummary(well_name=_header_value(las, "WELL"), curves=[])
 
     rows: list[CurveStats] = []
     for c in las.curves:  # type: ignore[attr-defined]
@@ -167,7 +173,7 @@ def read_las_curve(
     if curve_name not in las.curves:
         raise KeyError(f"curve '{curve_name}' not found in {path}")
 
-    depth = np.asarray(las.index, dtype=float)
+    depth = safe_index(las)
     values = np.asarray(las[curve_name], dtype=float)
     original_count = int(len(depth))
 

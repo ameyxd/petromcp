@@ -22,6 +22,29 @@ def test_depth_range_accepts_equal_endpoints() -> None:
     assert r.start == r.stop
 
 
+def test_from_optional_returns_none_when_both_omitted() -> None:
+    assert DepthRange.from_optional(None, None) is None
+
+
+def test_from_optional_builds_range_when_both_given() -> None:
+    r = DepthRange.from_optional(5000.0, 5100.0)
+    assert r == DepthRange(start=5000.0, stop=5100.0)
+
+
+@pytest.mark.parametrize(
+    ("start", "stop"),
+    [(5000.0, None), (None, 5100.0)],
+)
+def test_from_optional_rejects_half_specified_interval(
+    start: float | None, stop: float | None
+) -> None:
+    """A half-given interval used to be silently dropped back to a 500-sample
+    downsample, so the caller got a whole-well view believing it was their
+    interval. Fail loudly instead."""
+    with pytest.raises(ValueError, match="both"):
+        DepthRange.from_optional(start, stop)
+
+
 def test_las_summary_minimal() -> None:
     s = LASSummary(
         well_name="WELL-1",
