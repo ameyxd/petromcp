@@ -21,9 +21,27 @@ That runs lint, types, and tests, then writes three files into `dist/`:
 
 ## 1. PyPI
 
-    uv publish dist/petroleum_mcp-*.whl dist/petroleum_mcp-*.tar.gz
+Pass the token explicitly. Do not answer uv's interactive username/password
+prompt:
 
-`uv publish` prompts for a token, or reads `UV_PUBLISH_TOKEN`.
+    UV_PUBLISH_TOKEN=$(python3 -c "import getpass;print(getpass.getpass('PyPI token: '))") \
+      uv publish dist/petroleum_mcp-*.whl dist/petroleum_mcp-*.tar.gz
+
+That reads the token without echoing it and without leaving it in shell
+history or the environment.
+
+**Two failure modes worth knowing, both of which return a bare 403:**
+
+*"Username/Password authentication is no longer supported."* — uv prompted
+for a username and a password, and got a real username. PyPI dropped
+password auth entirely. If you use the prompt rather than the token flag,
+the username must be the literal string `__token__` and the password the
+whole token including its `pypi-` prefix. Using `--token` or
+`UV_PUBLISH_TOKEN` sets both correctly for you.
+
+*"Invalid or non-existent authentication information."* — usually a
+pypi.org token aimed at TestPyPI, which is a separate site with separate
+accounts and tokens. See below.
 
 **The first upload of a new project needs an account-scoped token**, from
 <https://pypi.org/manage/account/token/> with scope "Entire account". A

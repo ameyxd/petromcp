@@ -1,8 +1,15 @@
 # petromcp
 
-An MCP server that lets Claude read your LAS well log files directly.
-Local-first. Synthetic data only by default. DLIS, SEG-Y, and pump card
-support coming next.
+Read well logs with Claude without the data ever leaving your machine.
+
+petromcp is an MCP server for petroleum data formats, built for teams whose
+files legally cannot be uploaded to a cloud service. No telemetry, no
+phone-home, no automatic updates, and a default-deny path allowlist that
+refuses to open anything you have not explicitly permitted. LAS today; DLIS,
+SEG-Y, and pump cards next.
+
+If you can upload your data somewhere, you have more options than this. If you
+can't, this was written for you.
 
 ## What this gives you
 
@@ -105,3 +112,9 @@ model: [SECURITY.md](SECURITY.md).
 ## License
 
 MIT.
+
+---
+
+Built by [Amey Ambade](https://heyamey.com). I write about AI systems in
+industries where the data can't leave the building, at
+[writing.heyamey.com](https://writing.heyamey.com).

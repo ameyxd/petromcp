@@ -94,6 +94,10 @@ DLIS lands.
   sanity-checked by an SME — a working petrophysicist — before launch
   outreach. Wrong heuristics in the launch demo would hurt credibility
   with the audience that matters most.
+- **`convert_units` has no discovery tool.** The supported pairs are only
+  discoverable by calling it wrong and reading the error. `petro-mcp` ships
+  `list_oilfield_units` and is straightforwardly right about this. Add
+  `list_supported_units`; it is a small job.
 - The access log never rotates. It grows unbounded at
   `~/.petromcp/access.log`.
 - Two config-reading paths exist: `config.py` (Pydantic-validated) and
