@@ -1,0 +1,80 @@
+{
+  "manifest_version": "0.3",
+  "name": "petromcp",
+  "display_name": "petromcp",
+  "version": "0.4.0",
+  "description": "Read LAS well logs from your own disk, behind a default-deny path allowlist.",
+  "long_description": "petromcp exposes petroleum data formats to MCP hosts. It wraps established open-source parsers (lasio) and returns token-budgeted summaries rather than raw curve dumps: header metadata, per-curve statistics with gap percentages, individual curve values with a sampling cap, well-to-well comparison, and unit conversion. It also ships a qc_a_well_log prompt that walks the model through a standard QC pass.\n\nIt runs entirely on your machine. There is no telemetry and no network access of any kind. It can only read the directories you pick during installation, resolved through symlinks, and it refuses everything else.\n\nRequires uv (https://docs.astral.sh/uv/) on your PATH. uv fetches petromcp and a matching Python on first launch, so the first start takes a few seconds longer than later ones.\n\nLAS is supported today. DLIS, SEG-Y, and pump cards follow in later releases.",
+  "author": {
+    "name": "Amey Ambade",
+    "url": "https://github.com/ameyxd"
+  },
+  "homepage": "https://github.com/ameyxd/petromcp",
+  "documentation": "https://github.com/ameyxd/petromcp/blob/main/docs/TOOLS_REFERENCE.md",
+  "support": "https://github.com/ameyxd/petromcp/issues",
+  "license": "MIT",
+  "keywords": [
+    "petroleum",
+    "well-log",
+    "las",
+    "petrophysics",
+    "oil-and-gas",
+    "subsurface"
+  ],
+  "server": {
+    "type": "binary",
+    "entry_point": "uvx",
+    "mcp_config": {
+      "command": "uvx",
+      "args": [
+        "petromcp==0.4.0",
+        "serve",
+        "--allow-path",
+        "${user_config.allowed_directories}"
+      ]
+    }
+  },
+  "tools": [
+    {
+      "name": "read_las_file",
+      "description": "Header-level summary of a LAS file. No curve data."
+    },
+    {
+      "name": "summarize_las_curves",
+      "description": "Per-curve min, max, mean, stddev, and gap percentage."
+    },
+    {
+      "name": "read_las_curve",
+      "description": "Depths and values for one curve, with a sampling cap."
+    },
+    {
+      "name": "compare_well_logs",
+      "description": "Common curves, depth overlap, unit consistency, and issue flags for two LAS files."
+    },
+    {
+      "name": "convert_units",
+      "description": "Convert between ft/m, psi/kPa, psi/bar, bbl/m3, degF/degC, and mD/m2."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "qc_a_well_log",
+      "description": "Walks the model through a standard well-log QC pass.",
+      "text": "Review this well log with petromcp and flag anything unusual."
+    }
+  ],
+  "tools_generated": false,
+  "user_config": {
+    "allowed_directories": {
+      "type": "directory",
+      "title": "Well log directories",
+      "description": "Directories petromcp may read. It can read nothing outside this list, and nothing at all if the list is empty.",
+      "multiple": true,
+      "required": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin", "linux", "win32"]
+  }
+}

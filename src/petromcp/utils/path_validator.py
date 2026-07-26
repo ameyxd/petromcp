@@ -41,6 +41,8 @@ def validate_path(target: Path | str, allowed: Sequence[Path | str]) -> Path:
         f"petromcp: path {target_path} is not in allowed_paths "
         "(symlinks are resolved before this check, so the displayed path "
         "may differ from the literal one you passed). "
-        "Add the directory to ~/.petromcp/config.json and restart the host."
+        "Grant access by running `petromcp config add-path <directory>`, or "
+        "by passing `serve --allow-path <directory>` in the host's server "
+        "config, then restart the host — the allowlist is read at startup."
     )
     raise PathNotAllowedError(msg)

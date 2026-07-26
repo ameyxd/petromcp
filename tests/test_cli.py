@@ -59,3 +59,24 @@ def test_install_command_pins_project_and_skips_sync(
     project_idx = args.index("--project")
     assert args[project_idx + 1] == str(cli.PROJECT_ROOT)
     assert args[-2:] == ["petromcp", "serve"]
+
+
+class TestServeAllowPath:
+    """MCPB expands a `multiple: true` directory config into separate argv
+    entries, so `--allow-path` has to swallow a run of them, not just one."""
+
+    def test_accepts_several_directories_after_one_flag(self) -> None:
+        args = cli.build_parser().parse_args(
+            ["serve", "--allow-path", "/wells/a", "/wells/b"]
+        )
+        assert args.allow_path == ["/wells/a", "/wells/b"]
+
+    def test_accepts_the_flag_repeated(self) -> None:
+        args = cli.build_parser().parse_args(
+            ["serve", "--allow-path", "/wells/a", "--allow-path", "/wells/b"]
+        )
+        assert args.allow_path == ["/wells/a", "/wells/b"]
+
+    def test_defaults_to_no_extra_paths(self) -> None:
+        args = cli.build_parser().parse_args(["serve"])
+        assert args.allow_path == []

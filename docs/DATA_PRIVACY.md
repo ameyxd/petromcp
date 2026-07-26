@@ -14,19 +14,37 @@ this server.
 
 ## What petromcp can read
 
-Nothing, unless you tell it to. The default configuration has an empty
-`allowed_paths` list. Every file-reading tool routes through a strict path
-validator that rejects any path outside the allowlist after symlink
-resolution. There is no escape hatch in v1.
+Nothing, unless you tell it to. Every file-reading tool routes through a
+strict path validator that rejects any path outside the allowlist after
+symlink resolution. There is no escape hatch: no environment variable
+widens the allowlist, and no tool can change it at runtime.
 
-To allow a directory, edit `~/.petromcp/config.json`:
+The allowlist has exactly two sources, and both are you granting access
+explicitly. They are unioned, and with both empty petromcp can read nothing.
+
+**1. The config file.** Edit `~/.petromcp/config.json`:
 
     {
       "allowed_paths": ["~/petroleum/wells"]
     }
 
-A request to read any file outside that list returns an error and the LLM
-sees the error, not the file contents.
+or use `petromcp config add-path ~/petroleum/wells`.
+
+**2. The `--allow-path` flag** on `petromcp serve`, set in your MCP host's
+server configuration:
+
+    petromcp serve --allow-path ~/petroleum/wells
+
+This exists so hosts that install petromcp through a bundle can show a
+folder picker and pass what you chose. It is not a bypass: it grants the
+same kind of access as the config file, and it can only be set by whoever
+already controls how the server is launched on your machine.
+
+Both sources are read once, at startup. Changing either requires restarting
+the host.
+
+A request to read any file outside the resulting list returns an error, and
+the LLM sees the error, not the file contents.
 
 ## What petromcp logs
 

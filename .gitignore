@@ -6,6 +6,7 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+*.mcpb
 
 # Test and lint caches
 .pytest_cache/

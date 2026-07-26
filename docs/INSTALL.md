@@ -93,6 +93,28 @@ If you would rather not edit JSON by hand:
 `add-path` and `remove-path` are idempotent. `init` will not overwrite an
 existing config; remove the file manually if you want a clean slate.
 
+## Grant directories from the host config instead
+
+`petromcp serve` also accepts `--allow-path`, which unions with whatever is
+in the config file. Use it when you would rather keep the allowlist in the
+host's server entry than in `~/.petromcp/config.json`:
+
+    {
+      "mcpServers": {
+        "petromcp": {
+          "command": "uvx",
+          "args": [
+            "petromcp", "serve",
+            "--allow-path", "/Users/you/petroleum/wells",
+            "--allow-path", "/Users/you/petroleum/offset"
+          ]
+        }
+      }
+    }
+
+The flag is repeatable and also accepts several directories after a single
+occurrence. With no config file and no flag, petromcp can read nothing.
+
 ## Uninstall
 
     make uninstall-claude

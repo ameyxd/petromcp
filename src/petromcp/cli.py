@@ -65,10 +65,12 @@ def _resolve_user_path(p: str) -> str:
     return str(Path(p).expanduser().resolve())
 
 
-def _cmd_serve(_: argparse.Namespace) -> int:
-    from petromcp.server import main as serve_main
+def _cmd_serve(args: argparse.Namespace) -> int:
+    from petromcp.config import load_config, resolve_allowed_paths
+    from petromcp.server import build_app
 
-    serve_main()
+    roots = resolve_allowed_paths(load_config().allowed_paths, args.allow_path)
+    build_app(allowed_paths=roots).run()
     return 0
 
 
@@ -160,7 +162,22 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="petromcp")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    sub.add_parser("serve", help="run the MCP server").set_defaults(func=_cmd_serve)
+    serve = sub.add_parser("serve", help="run the MCP server")
+    # `nargs="+"` with `action="extend"` covers both shapes: the flag repeated
+    # once per directory, and a single flag followed by a run of them. MCPB
+    # produces the second when it expands a `multiple: true` directory config.
+    serve.add_argument(
+        "--allow-path",
+        action="extend",
+        nargs="+",
+        default=[],
+        metavar="DIR",
+        help=(
+            "additional directory the server may read, on top of "
+            "allowed_paths in ~/.petromcp/config.json. Repeatable."
+        ),
+    )
+    serve.set_defaults(func=_cmd_serve)
 
     install = sub.add_parser("install", help="install into a host config")
     install.add_argument("--client", default="claude-desktop")

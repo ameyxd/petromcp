@@ -9,7 +9,7 @@ SHELL := /bin/bash
 UNAME_S := $(shell uname -s)
 
 .PHONY: help setup sync clean unhide test lint typecheck check run \
-        install-claude uninstall-claude generate eval
+        install-claude uninstall-claude generate eval dist bundle release-artifacts
 
 help:
 	@echo "petromcp targets:"
@@ -25,7 +25,10 @@ help:
 	@echo "  uninstall-claude remove petromcp from Claude Desktop config"
 	@echo "  generate         (re)build the synthetic LAS sample"
 	@echo "  eval             run the local QC eval scenario"
-	@echo "  clean            remove caches and eval tmp"
+	@echo "  dist             build the sdist and wheel into dist/"
+	@echo "  bundle           build the MCPB bundle for Smithery into dist/"
+	@echo "  release-artifacts  check + dist + bundle (run before publishing)"
+	@echo "  clean            remove caches, build output, and eval tmp"
 
 setup sync:
 	uv sync
@@ -72,6 +75,21 @@ generate: unhide
 eval: unhide
 	uv run --no-sync python -m evals.run_eval --scenario evals/scenarios/01_well_log_qc.yaml
 
+# Release artefacts. `dist` produces what goes to PyPI; `bundle` produces the
+# .mcpb that goes to Smithery. Both land in dist/, which is gitignored.
+dist: unhide
+	rm -rf dist
+	uv build
+
+bundle: unhide
+	uv run --no-sync python packaging/mcpb/build.py
+
+release-artifacts: check dist bundle
+	@echo
+	@ls -lh dist/
+	@echo
+	@echo "Next: see docs/PUBLISHING.md"
+
 clean:
-	rm -rf .pytest_cache .ruff_cache .eval_tmp
+	rm -rf .pytest_cache .ruff_cache .eval_tmp build dist
 	find . -name "__pycache__" -type d -prune -exec rm -rf {} +

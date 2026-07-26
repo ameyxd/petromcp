@@ -24,14 +24,31 @@ First release published to PyPI, the Glama directory, and Smithery.
 
 ### Added
 
+- `petromcp serve --allow-path DIR` grants read access to a directory from
+  the host's server config, unioned with `~/.petromcp/config.json` rather
+  than replacing it. This is what lets a bundle installer show a folder
+  picker. It is not a bypass: with no config file and no flag, petromcp
+  still reads nothing.
 - Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`,
   `openWorldHint`) and a display title. petromcp only reads, and never
   touches a network; hosts can use this to skip write-approval prompts.
-- `glama.json` and `server.json` for directory listings.
-- MCPB bundle build (`make bundle`) for Smithery distribution.
+- Server instructions telling the model how to recover from an allowlist
+  refusal instead of guessing at neighbouring paths.
+- `glama.json` and `server.json` for directory listings, and an MCPB bundle
+  build (`make bundle`) for Smithery. Publishing runbook in
+  [docs/PUBLISHING.md](docs/PUBLISHING.md).
 - CI now tests Python 3.10 alongside 3.12, matching the declared
   `requires-python` floor.
 - Packaging metadata: keywords, trove classifiers, and project URLs.
+
+### Changed
+
+- `serverInfo.version` reports petromcp's version. It previously reported
+  FastMCP's, which is the field hosts and directories display.
+- `__version__` derives from installed package metadata rather than a
+  hardcoded constant, which had already drifted a minor version.
+- The sdist no longer carries internal design and planning documents
+  (178KB down to 41KB).
 
 ## 0.3.0 — 2026-05-08
 

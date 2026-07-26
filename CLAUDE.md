@@ -19,14 +19,25 @@ pyproject description trim. v0.2 design:
 `docs/superpowers/specs/2026-05-07-petromcp-v0.2-tier1-design.md`. v0.2 plan:
 `docs/superpowers/plans/2026-05-07-petromcp-v0.2-tier1.md`.
 
-v0.3 (2026-05-08) ships two bug fixes from the v0.2 bad-LAS corpus:
-UTF-8 well names are now decoded correctly via a new `read_lasio` helper
-that tries UTF-8 first and falls back to latin-1; truncated LAS files
-return a degraded `LASSummary` instead of propagating `lasio`'s IndexError.
+v0.3 (2026-05-08) shipped two bug fixes from the v0.2 bad-LAS corpus:
+UTF-8 well names decode correctly via `read_lasio`; truncated LAS files
+return a degraded `LASSummary` from `read_las_file`.
+
+v0.4 (2026-07-26) is the public-distribution release: PyPI, Glama, and
+Smithery. It also completes the v0.3 truncated-LAS fix, which only ever
+covered `read_las_file` — `summarize_las_curves` and `compare_well_logs`
+still raised IndexError, because the corpus tests only exercised one tool.
+The guard now lives in `utils/lasio_open.safe_index` and every tool routes
+through it. Also fixed: a half-specified depth interval was silently
+dropped, `serverInfo.version` reported FastMCP's version, and `__version__`
+had drifted from pyproject.
+
+Publishing runbook: `docs/PUBLISHING.md`. Directory metadata lives in
+`glama.json`, `server.json`, and `packaging/mcpb/`.
 
 Next is Tier 2 — DLIS slice gets its own design + plan + execution cycle.
-SEG-Y, pump cards, Plotly, release workflow, additional hosts, and
-walkthroughs follow after DLIS lands.
+SEG-Y, pump cards, Plotly, additional hosts, and walkthroughs follow after
+DLIS lands.
 
 ## Conventions
 
@@ -53,7 +64,16 @@ walkthroughs follow after DLIS lands.
   deterministic; demo data is reproduced on demand. Tiny fixture LAS files
   live under `tests/fixtures/` and are committed for unit tests.
 - **Path allowlist is the privacy backbone.** Default deny. Every tool routes
-  through it. There is no escape hatch in v1.
+  through it. There is no escape hatch: no environment variable widens it and
+  no tool mutates it at runtime. As of v0.4 it has two sources — the config
+  file and `serve --allow-path` — which are unioned, never substituted. The
+  flag exists because a bundle installer needs to pass the directories the
+  user picked in a folder dialog; both empty still means read nothing.
+- **PyPI is the distribution channel.** The MCPB bundle deliberately does not
+  vendor dependencies: numpy and pydantic-core wheels are tagged for one
+  exact CPython minor, so a vendored bundle silently breaks on any other
+  host Python. The bundle shells out to `uvx petromcp==<version>` instead.
+  This trades a vendoring problem for a `uv`-on-PATH requirement.
 
 ## Things to revisit later
 
@@ -66,16 +86,22 @@ walkthroughs follow after DLIS lands.
   sanity-checked by an SME — a working petrophysicist — before launch
   outreach. Wrong heuristics in the launch demo would hurt credibility
   with the audience that matters most.
-- CI matrix is 3.12 only. Add 3.10 once the slice ships if there's audience demand.
-- PyPI publish happens after the DLIS slice lands, not this one.
-- **Bad-LAS corpus follow-ups — fixed in v0.3:**
-  1. Truncated LAS (header sections only) used to propagate `IndexError`
-     from lasio. `read_las_file` now catches it and returns a degraded
-     `LASSummary` with `total_points=0` and an empty curves list.
-  2. `lasio.read()` defaults to latin-1, which mangled UTF-8 well names
-     like `Pozo-Ñoño` into mojibake. Both `tools/las.py` and `tools/compare.py`
-     now route through `petromcp.utils.lasio_open.read_lasio`, which tries
-     UTF-8 first and falls back to latin-1 on `UnicodeDecodeError`.
+- The access log never rotates. It grows unbounded at
+  `~/.petromcp/access.log`.
+- Two config-reading paths exist: `config.py` (Pydantic-validated) and
+  `cli.py::_read_user_config` (raw JSON). A malformed config written via the
+  CLI is not caught until the server starts.
+- The allowlist is captured at startup, so `config add-path` always needs a
+  host restart. The refusal message says so, but a `reload` tool or a
+  per-call config read would be friendlier.
+- If Smithery install failures show up, the fallback for the MCPB bundle is
+  a self-contained `server.type: "binary"` build with an embedded
+  interpreter (~60-100MB per platform), removing the `uv` requirement.
+- **A fix that only covers one call site is not a fix.** The v0.3 truncated
+  LAS work patched `read_las_file` and was recorded here as done; two other
+  tools kept crashing for two releases because the corpus tests only called
+  the one tool. Corpus tests now run every file-reading tool against every
+  fixture. Apply the same rule to future format slices.
 
 ## Known gotchas
 
