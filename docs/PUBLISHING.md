@@ -21,22 +21,39 @@ That runs lint, types, and tests, then writes three files into `dist/`:
 
 ## 1. PyPI
 
-Publish to TestPyPI first and install from it — a broken `uvx petromcp` is
-visible on both directory listings the moment they index you.
-
-    uv publish --publish-url https://test.pypi.org/legacy/ dist/petromcp-*.whl dist/petromcp-*.tar.gz
-    uvx --index-url https://test.pypi.org/simple/ --index-strategy unsafe-best-match petromcp==<version> --help
-
-Then the real thing:
-
     uv publish dist/petromcp-*.whl dist/petromcp-*.tar.gz
 
-`uv publish` prompts for a token, or reads `UV_PUBLISH_TOKEN`. Generate a
-project-scoped token at <https://pypi.org/manage/account/token/>.
+`uv publish` prompts for a token, or reads `UV_PUBLISH_TOKEN`.
 
-Verify with a clean cache before moving on:
+**The first upload of a new project needs an account-scoped token**, from
+<https://pypi.org/manage/account/token/> with scope "Entire account". A
+project-scoped token cannot work until the project exists, because there is
+nothing yet to scope it to. Narrow it to project scope after the first
+release.
+
+Verify with a clean cache before moving on — everything downstream depends
+on this working:
 
     uvx --no-cache petromcp==<version> --help
+
+### On TestPyPI
+
+Skip it. TestPyPI is a wholly separate site: separate account, separate
+tokens, separate package index. A pypi.org token 403s against it, which is
+the confusing failure mode most people hit. It also cannot resolve
+petromcp's dependencies without
+`--index-strategy unsafe-best-match`, because they are not mirrored there.
+
+The thing TestPyPI would catch — a wheel that does not install or run — is
+better caught locally, and more thoroughly:
+
+    uv build
+    uv venv --python 3.10 /tmp/probe && uv pip install --python /tmp/probe/bin/python dist/petromcp-*.whl
+    /tmp/probe/bin/petromcp --help
+
+Then exercise the real stdio path with `uvx --from ./dist/petromcp-*.whl
+petromcp serve --allow-path <dir>` and confirm both an allowed read and a
+refused one. That is a stronger check than a TestPyPI round trip.
 
 ## 2. Glama
 
@@ -61,13 +78,21 @@ any later edit to `glama.json`.
 
 ## 3. Smithery
 
+**Do not publish here until step 1 is done and verified.** The bundle
+launches `uvx petromcp==<version>`; published against a version that is not
+on PyPI, every install fails with a package-not-found error. A listing that
+fails on first try is worse than no listing.
+
 petromcp is a local stdio server, so the hosted-URL path does not apply: a
 container in Smithery's cloud cannot read LAS files on the user's disk, and
 the path allowlist is the entire privacy posture. The local MCPB bundle is
 the correct route.
 
-    npx -y @smithery/cli login
-    npx -y @smithery/cli mcp publish dist/petromcp-<version>.mcpb -n ameyxd/petromcp
+`auth login` needs a real terminal — it does nothing useful when run
+headless.
+
+    npx -y @smithery/cli@latest auth login
+    npx -y @smithery/cli@latest mcp publish dist/petromcp-<version>.mcpb -n ameyxd/petromcp
 
 Then open the server's **Settings → Verification** page and complete the
 vendor verification checks.
