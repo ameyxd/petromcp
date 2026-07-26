@@ -11,6 +11,7 @@ from pathlib import Path
 
 from fastmcp import FastMCP
 
+from petromcp import __version__
 from petromcp.config import load_config
 from petromcp.models.compare import ComparisonReport
 from petromcp.models.las import CurveData, CurveSummary, LASSummary
@@ -28,6 +29,22 @@ from petromcp.tools.las import (
 )
 from petromcp.utils.units import convert_units as _convert_units
 
+# Shown to the model when the server is connected. It exists to prevent the
+# most common wasted turn: guessing at a path that is not on the allowlist.
+INSTRUCTIONS = """\
+petromcp reads petroleum data files from the local disk. It currently
+supports LAS well logs.
+
+It can only read files inside the user's configured allowlist; every other
+path is refused. If a read is refused, tell the user to run
+`petromcp config add-path <directory>` and restart this host — the
+allowlist is read once at startup. Do not try neighbouring paths.
+
+Prefer `read_las_file` and `summarize_las_curves` first. Reach for
+`read_las_curve` only when specific values are needed, and pass
+`depth_start` and `depth_stop` together to scope it.
+"""
+
 # Every petromcp tool is a reader. Declaring that lets hosts skip the
 # write-confirmation prompt and lets directories label the server correctly.
 # `openWorldHint=False` is the important one: nothing here touches a network.
@@ -44,7 +61,14 @@ def build_app(allowed_paths: list[Path] | None = None) -> FastMCP:
     roots: list[Path] = (
         list(allowed_paths) if allowed_paths is not None else list(cfg.allowed_paths)
     )
-    app: FastMCP = FastMCP("petromcp")
+    # `version` matters beyond cosmetics: without it FastMCP reports its own
+    # version in serverInfo, which is what hosts and public directories show.
+    app: FastMCP = FastMCP(
+        "petromcp",
+        version=__version__,
+        website_url="https://github.com/ameyxd/petromcp",
+        instructions=INSTRUCTIONS,
+    )
 
     @app.tool(title="Read LAS header", annotations=READ_ONLY)
     def read_las_file(path: str) -> LASSummary:

@@ -57,6 +57,27 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/petromcp"]
 
+# The sdist carries what someone needs to build, test, and understand the
+# package. It deliberately omits `docs/superpowers/` (internal design and
+# planning records, ~170KB) and `CLAUDE.md` (agent instructions) — both stay
+# in the repo, neither belongs in a distribution.
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/petromcp",
+    "tests",
+    "examples",
+    "evals",
+    "docs/*.md",
+    "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "LICENSE",
+    "SPEC_petromcp.md",
+    "Makefile",
+    "pyproject.toml",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=8.0",

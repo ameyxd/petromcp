@@ -53,3 +53,21 @@ def test_every_tool_is_annotated_read_only_and_closed_world() -> None:
 def test_registers_the_qc_prompt() -> None:
     prompts = asyncio.run(build_app(allowed_paths=[]).get_prompts())
     assert "qc_a_well_log" in prompts
+
+
+def test_advertises_petromcps_own_version_not_fastmcps() -> None:
+    """serverInfo.version is what hosts and public directories display. Left
+    unset, FastMCP reports its own version there."""
+    from petromcp import __version__
+
+    app = build_app(allowed_paths=[])
+    assert app.version == __version__
+    assert __version__ != "0.0.0+unknown", "package metadata not readable"
+
+
+def test_declares_instructions_covering_the_allowlist() -> None:
+    """The refusal path is the one a model is most likely to fumble, so the
+    remedy belongs in the server instructions."""
+    instructions = build_app(allowed_paths=[]).instructions
+    assert instructions is not None
+    assert "config add-path" in instructions
