@@ -19,12 +19,29 @@ and `segyio` queued for the next slices — and exposes them as MCP tools, so
 you can have a conversation with your data instead of copy-pasting curve
 values into chat.
 
-## Privacy first
+## What "local-first" means here, concretely
 
-petromcp runs on your machine. It refuses to read any file outside an
-explicit allowlist. There is no telemetry, no phone-home, no automatic
-updates. Read [docs/DATA_PRIVACY.md](docs/DATA_PRIVACY.md) before pointing
-it at real data.
+Not a posture. Four things you can verify in the source:
+
+- **Default deny.** A fresh install can read nothing. Access is granted per
+  directory, and every tool routes through one validator that resolves
+  symlinks before checking, so a link inside an allowed directory cannot
+  reach outside it. There is no environment variable that widens the
+  allowlist and no tool that changes it at runtime.
+- **No network, declared.** petromcp opens no outbound connections. All five
+  tools ship `openWorldHint: false` and `readOnlyHint: true`, so your host
+  can verify that claim rather than take it.
+- **An audit trail.** Every tool call is logged with a timestamp, the tool
+  name, and the resolved path.
+- **Bounded output.** Curve reads are capped and report `downsampled` and
+  `original_count`, so a 20,000-point log cannot silently dump into a
+  context window.
+
+The threat model, and what does *not* count as a vulnerability, are in
+[SECURITY.md](SECURITY.md). Read
+[docs/DATA_PRIVACY.md](docs/DATA_PRIVACY.md) before pointing this at real
+data — it is authoritative, and if the code contradicts it the code is the
+bug.
 
 ## Install
 
@@ -67,7 +84,7 @@ Or, if you want to try it without your own data, generate the synthetic
 sample from a checkout and allowlist that:
 
     make generate
-    uv run --no-sync petromcp config add-path "$(pwd)/examples/sample_data"
+    uvx petroleum-mcp config add-path "$(pwd)/examples/sample_data"
 
 Restart your MCP host after editing the allowlist — it is read once at
 startup.
