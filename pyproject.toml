@@ -4,7 +4,7 @@
 # `petromcp` as too similar to the unrelated `petro-mcp`, which normalizes
 # to the same string once separators are collapsed.
 name = "petroleum-mcp"
-version = "0.5.0"
+version = "0.5.1"
 description = "Local-first MCP server for petroleum data. Reads LAS well logs; DLIS, SEG-Y, and pump cards next."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -53,6 +53,12 @@ Documentation = "https://github.com/ameyxd/petromcp/blob/main/docs/TOOLS_REFEREN
 
 [project.scripts]
 petromcp = "petromcp.cli:main"
+# `uvx <package>` runs the executable whose name matches the package. Because
+# the distribution is `petroleum-mcp` and the script is `petromcp`, without
+# this alias `uvx petroleum-mcp serve` fails with "executable not found" —
+# which is the command every install instruction gives. Both names are kept:
+# `petromcp` for people with it on PATH, `petroleum-mcp` so uvx works.
+petroleum-mcp = "petromcp.cli:main"
 
 [build-system]
 requires = ["hatchling"]

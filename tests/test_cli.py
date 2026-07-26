@@ -80,3 +80,41 @@ class TestServeAllowPath:
     def test_defaults_to_no_extra_paths(self) -> None:
         args = cli.build_parser().parse_args(["serve"])
         assert args.allow_path == []
+
+
+class TestConsoleScripts:
+    """`uvx <package>` runs the executable whose name matches the package.
+
+    The distribution is `petroleum-mcp` while the historical script is
+    `petromcp`, so without an alias every documented install command fails
+    with "executable not found". These tests fail if the alias is dropped.
+    """
+
+    def test_both_console_scripts_are_installed(self) -> None:
+        from importlib.metadata import entry_points
+
+        names = {
+            ep.name
+            for ep in entry_points(group="console_scripts")
+            if ep.value.startswith("petromcp.cli")
+        }
+        assert {"petromcp", "petroleum-mcp"} <= names, f"got {names}"
+
+    def test_the_alias_matching_the_distribution_name_exists(self) -> None:
+        """This is the one uvx needs; the other is for PATH installs."""
+        from importlib.metadata import entry_points
+
+        from petromcp import DISTRIBUTION_NAME
+
+        names = {ep.name for ep in entry_points(group="console_scripts")}
+        assert DISTRIBUTION_NAME in names
+
+    def test_both_scripts_point_at_the_same_entry_point(self) -> None:
+        from importlib.metadata import entry_points
+
+        targets = {
+            ep.value
+            for ep in entry_points(group="console_scripts")
+            if ep.name in {"petromcp", "petroleum-mcp"}
+        }
+        assert len(targets) == 1, f"aliases diverged: {targets}"

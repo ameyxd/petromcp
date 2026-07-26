@@ -52,7 +52,7 @@ release.
 Verify with a clean cache before moving on — everything downstream depends
 on this working:
 
-    uvx --no-cache petroleum-mcp==<version> --help
+    uvx --no-cache petroleum-mcp@<version> --help
 
 ### On TestPyPI
 
@@ -97,7 +97,7 @@ any later edit to `glama.json`.
 ## 3. Smithery
 
 **Do not publish here until step 1 is done and verified.** The bundle
-launches `uvx petroleum-mcp==<version>`; published against a version that is not
+launches `uvx petroleum-mcp@<version>`; published against a version that is not
 on PyPI, every install fails with a package-not-found error. A listing that
 fails on first try is worse than no listing.
 
@@ -115,12 +115,29 @@ headless.
 Then open the server's **Settings → Verification** page and complete the
 vendor verification checks.
 
+### Two uvx traps, both verified the hard way
+
+`uvx <name>==<version>` is a **parse error** — uvx reads the first argument as
+a command name, and `==` is not legal there. The pinned form is
+`uvx <name>@<version>`.
+
+`uvx petroleum-mcp` only works because the package declares a console script
+named `petroleum-mcp` alongside `petromcp` (see `[project.scripts]`). uvx runs
+the executable whose name matches the package, and the distribution name and
+the historical script name differ here. Drop that alias and every install
+instruction in the README breaks with "executable not found".
+`tests/test_cli.py::TestConsoleScripts` guards it.
+
+When verifying a release, run the command the docs actually give, character for
+character. Testing `uvx --from ./dist/*.whl petromcp serve` proves that
+invocation works and says nothing about the one users will paste.
+
 ### What is in the bundle
 
 `dist/petromcp-<version>.mcpb` is about 4KB — a manifest, the README, and the
 licence. It does not vendor Python dependencies. It launches:
 
-    uvx petroleum-mcp==<version> serve --allow-path <directories the user picked>
+    uvx petroleum-mcp@<version> serve --allow-path <directories the user picked>
 
 Vendoring was tried and rejected on evidence. numpy, pydantic-core and 27
 other extension modules ship wheels tagged for one exact CPython minor
@@ -154,11 +171,11 @@ disagrees with `pyproject.toml`, and a test fails if `__init__.py` drifts,
 but `server.json` is checked by neither.
 
 - [ ] `pyproject.toml` `version`
-- [ ] `packaging/mcpb/manifest.json` `version` **and** the `petroleum-mcp==<version>` pin in `args`
+- [ ] `packaging/mcpb/manifest.json` `version` **and** the `petroleum-mcp@<version>` pin in `args`
 - [ ] `server.json` `version` and `packages[0].version`
 - [ ] `CHANGELOG.md` has an entry
 - [ ] `make release-artifacts` passes
 - [ ] tag pushed (no `v` prefix): `git tag <version> && git push origin <version>`
-- [ ] PyPI published and `uvx --no-cache petroleum-mcp==<version> --help` works
+- [ ] PyPI published and `uvx --no-cache petroleum-mcp@<version> --help` works
 - [ ] Smithery bundle published
 - [ ] Glama claim re-run if `glama.json` changed

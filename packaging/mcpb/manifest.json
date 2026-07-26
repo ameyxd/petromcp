@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "petromcp",
   "display_name": "petromcp",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Read LAS well logs from your own disk, behind a default-deny path allowlist.",
   "long_description": "petromcp exposes petroleum data formats to MCP hosts. It wraps established open-source parsers (lasio) and returns token-budgeted summaries rather than raw curve dumps: header metadata, per-curve statistics with gap percentages, individual curve values with a sampling cap, well-to-well comparison, and unit conversion. It also ships a qc_a_well_log prompt that walks the model through a standard QC pass.\n\nIt runs entirely on your machine. There is no telemetry and no network access of any kind. It can only read the directories you pick during installation, resolved through symlinks, and it refuses everything else.\n\nRequires uv (https://docs.astral.sh/uv/) on your PATH. uv fetches petromcp and a matching Python on first launch, so the first start takes a few seconds longer than later ones.\n\nLAS is supported today. DLIS, SEG-Y, and pump cards follow in later releases.",
   "author": {
@@ -27,7 +27,7 @@
     "mcp_config": {
       "command": "uvx",
       "args": [
-        "petroleum-mcp==0.5.0",
+        "petroleum-mcp@0.5.1",
         "serve",
         "--allow-path",
         "${user_config.allowed_directories}"

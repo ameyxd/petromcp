@@ -62,15 +62,24 @@ def load_manifest(version: str) -> dict:
             f"manifest.json says {manifest['version']} but pyproject says "
             f"{version}. Update packaging/mcpb/manifest.json."
         )
-    # The bundle launches `uvx <distribution>==<version>`. That is the PyPI
-    # distribution name (`petroleum-mcp`), not the import package or the
-    # console script, which are both still `petromcp`.
-    pin = f"{DISTRIBUTION_NAME}=={version}"
+    # The bundle launches `uvx <distribution>@<version>`.
+    #
+    # The `@` form is required, not cosmetic. `uvx <name>==<version>` is a
+    # parse error, and `uvx <name>` only works because the package declares a
+    # console script matching the distribution name — see the alias in
+    # pyproject's [project.scripts]. Both were verified against a real uvx
+    # before this shape was chosen.
+    pin = f"{DISTRIBUTION_NAME}@{version}"
     args = manifest["server"]["mcp_config"]["args"]
     if pin not in args:
         raise SystemExit(
             f"manifest args must pin {pin} so the bundle and the published "
             f"package cannot drift. Got: {args}"
+        )
+    if any("==" in a for a in args):
+        raise SystemExit(
+            f"manifest args use `==`, which uvx rejects as a package name. "
+            f"Use {pin}. Got: {args}"
         )
     return manifest
 

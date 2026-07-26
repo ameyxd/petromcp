@@ -3,6 +3,27 @@
 All notable changes to petromcp are recorded here. Versions follow
 [semantic versioning](https://semver.org/); tags carry no `v` prefix.
 
+## 0.5.1
+
+### Fixed
+
+- **Every documented install command was broken.** The package declared only
+  a `petromcp` console script while the PyPI distribution is
+  `petroleum-mcp`, and `uvx <package>` runs the executable whose name matches
+  the package. So `uvx petroleum-mcp serve` — the command in the README, the
+  install doc, and the Smithery bundle — failed with "An executable named
+  `petroleum-mcp` is not provided by package `petroleum-mcp`". The package now
+  declares both script names, pointing at the same entry point.
+- **The Smithery bundle could never have launched.** Its manifest pinned
+  `uvx petroleum-mcp==<version>`, and `uvx` rejects `==` outright: "Not a valid
+  package or extra name". The pinned form is `uvx petroleum-mcp@<version>`.
+  The bundle build now refuses to produce an artefact containing `==`.
+
+Both slipped through because the release check ran
+`uvx --from ./dist/*.whl petromcp serve`, which works, rather than the command
+the docs actually give. `tests/test_cli.py::TestConsoleScripts` covers the
+alias, and `docs/PUBLISHING.md` records both traps.
+
 ## 0.5.0
 
 Synthetic data that a petrophysicist would recognise, and an eval that
