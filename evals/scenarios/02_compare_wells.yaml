@@ -1,0 +1,11 @@
+id: "02_compare_wells"
+name: "Compare two wells"
+kind: "compare_wells"
+description: >
+  Compare the reference well against an offset well and verify the findings
+  match what the two manifests imply: a partial depth overlap, a sonic curve
+  present in one well only, and a neutron curve whose header units disagree
+  between the two files.
+input:
+  well_a: "SYNTH-01"
+  well_b: "SYNTH-02"

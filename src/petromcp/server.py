@@ -16,6 +16,7 @@ from petromcp.config import load_config
 from petromcp.models.compare import ComparisonReport
 from petromcp.models.las import CurveData, CurveSummary, LASSummary
 from petromcp.models.shared import DepthRange
+from petromcp.models.units import SupportedUnits
 from petromcp.prompts.qc_a_well_log import PROMPT_NAME, PROMPT_TEMPLATE
 from petromcp.tools.compare import compare_well_logs as _compare_well_logs
 from petromcp.tools.las import (
@@ -28,6 +29,7 @@ from petromcp.tools.las import (
     summarize_las_curves as _summarize_las_curves,
 )
 from petromcp.utils.units import convert_units as _convert_units
+from petromcp.utils.units import supported_units as _supported_units
 
 # Shown to the model when the server is connected. It exists to prevent the
 # most common wasted turn: guessing at a path that is not on the allowlist.
@@ -108,6 +110,14 @@ def build_app(allowed_paths: list[Path] | None = None) -> FastMCP:
         case-sensitive matching. Supported pairs: ft<->m, psi<->kPa,
         psi<->bar, bbl<->m3, degF<->degC, mD<->m2."""
         return _convert_units(value, from_unit, to_unit)
+
+    @app.tool(title="List supported units", annotations=READ_ONLY)
+    def list_supported_units() -> SupportedUnits:
+        """Every unit pair `convert_units` accepts, with its physical quantity.
+
+        Call this instead of guessing at unit names — matching is strict and
+        case-sensitive."""
+        return _supported_units()
 
     @app.prompt(name=PROMPT_NAME)
     def qc_a_well_log() -> str:

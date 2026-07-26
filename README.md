@@ -108,6 +108,7 @@ Claude picks the right tool, reads the file through petromcp, and answers.
 | `read_las_curve`        | Depths and values for one curve, with sampling cap    |
 | `compare_well_logs`     | Common curves, depth overlap, unit consistency, flags |
 | `convert_units`         | ft<->m, psi<->kPa, psi<->bar, bbl<->m3, degF<->degC, mD<->m2 |
+| `list_supported_units`  | Every convertible pair with its physical quantity      |
 | `qc_a_well_log` prompt  | Walks Claude through a standard QC pass               |
 
 Every tool is read-only and opens no network connection, and declares that
@@ -118,7 +119,7 @@ DLIS, SEG-Y, and pump card support land in subsequent releases.
 
 ## Status
 
-v0.4 ships the LAS slice, a comparison tool, a units utility, and
+v0.5 ships the LAS slice, a comparison tool, a units utility, and
 config-management CLI subcommands. The remaining formats are tracked in
 [SPEC_petromcp.md](SPEC_petromcp.md). The non-goals list there is real;
 read it before filing feature requests.

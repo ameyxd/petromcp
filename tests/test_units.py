@@ -1,8 +1,14 @@
 import math
 
 import pytest
+from pydantic import ValidationError
 
-from petromcp.utils.units import UnitConversionError, convert_units
+from petromcp.utils.units import (
+    _FORWARD,
+    UnitConversionError,
+    convert_units,
+    supported_units,
+)
 
 
 def test_identity_returns_value() -> None:
@@ -65,3 +71,48 @@ def test_non_finite_input_raises() -> None:
         convert_units(math.inf, "ft", "m")
     with pytest.raises(ValueError):
         convert_units(math.nan, "ft", "m")
+
+
+class TestListSupportedUnits:
+    """The tool and the conversion table must not diverge. Assert in both
+    directions: everything reported is convertible, and everything convertible
+    is reported."""
+
+    def test_reports_every_pair_in_the_conversion_table(self) -> None:
+        reported = {(p.from_unit, p.to_unit) for p in supported_units().pairs}
+        for a, b in _FORWARD:
+            assert (a, b) in reported or (b, a) in reported, f"{a}->{b} not reported"
+
+    def test_every_reported_pair_actually_converts(self) -> None:
+        for pair in supported_units().pairs:
+            # Would raise UnitConversionError if the tool advertised a pair the
+            # converter does not accept.
+            convert_units(1.0, pair.from_unit, pair.to_unit)
+
+    def test_every_reported_pair_converts_in_reverse_too(self) -> None:
+        for pair in supported_units().pairs:
+            convert_units(1.0, pair.to_unit, pair.from_unit)
+
+    def test_reports_both_directions_for_each_pair(self) -> None:
+        reported = {(p.from_unit, p.to_unit) for p in supported_units().pairs}
+        for a, b in list(reported):
+            assert (b, a) in reported, f"{b}->{a} missing"
+
+    def test_every_pair_carries_a_quantity_label(self) -> None:
+        for pair in supported_units().pairs:
+            assert pair.quantity, f"{pair.from_unit}->{pair.to_unit} has no quantity"
+
+    def test_quantities_are_from_the_known_set(self) -> None:
+        known = {"length", "pressure", "volume", "temperature", "permeability"}
+        assert {p.quantity for p in supported_units().pairs} <= known
+
+    def test_result_is_frozen(self) -> None:
+        result = supported_units()
+        with pytest.raises(ValidationError):
+            result.pairs = []  # type: ignore[misc]
+
+    def test_pairs_are_sorted_for_stable_output(self) -> None:
+        """Token-budgeted output should be deterministic across calls so it
+        caches and diffs cleanly."""
+        pairs = [(p.quantity, p.from_unit, p.to_unit) for p in supported_units().pairs]
+        assert pairs == sorted(pairs)

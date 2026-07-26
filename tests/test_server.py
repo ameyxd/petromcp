@@ -21,6 +21,7 @@ EXPECTED_TOOLS = {
     "read_las_curve",
     "compare_well_logs",
     "convert_units",
+    "list_supported_units",
 }
 
 

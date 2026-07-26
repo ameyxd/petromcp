@@ -1,24 +1,11 @@
 id: "01_well_log_qc"
 name: "Well log QC"
+kind: "single_well_qc"
 description: >
-  Run summarize_las_curves on the synthetic well and verify the well-known
-  inserted defects show up: a deliberate RHOB gap and curves with expected
-  unit annotations.
+  Build the reference well and verify petromcp surfaces every defect the
+  generator recorded: a density null gap, a washout, and a gamma ray spike.
+  Expectations are not listed here on purpose — they are read from the
+  ground-truth manifest the generator writes beside the LAS, so this scenario
+  cannot go stale when the generator changes.
 input:
-  generator: "examples.sample_data.generate:generate_well_01"
-  seed: 42
-expected:
-  curves:
-    - name: GR
-      units: GAPI
-      gap_percentage_max: 0.5
-    - name: RHOB
-      units: g/cm3
-      gap_percentage_min: 1.0
-    - name: NPHI
-      units: v/v
-      gap_percentage_max: 0.5
-    - name: DT
-      units: us/ft
-    - name: CALI
-      units: in
+  well: "SYNTH-01"

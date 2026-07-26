@@ -3,6 +3,44 @@
 All notable changes to petromcp are recorded here. Versions follow
 [semantic versioning](https://semver.org/); tags carry no `v` prefix.
 
+## 0.5.0
+
+Synthetic data that a petrophysicist would recognise, and an eval that
+asserts against ground truth instead of a copy of it.
+
+### Added
+
+- **Facies-based synthetic generator.** Curves derive from the standard
+  relations rather than invented shapes: bulk density from the
+  density-porosity relation, transit time from the Wyllie time-average, and a
+  clay-bound-water term that produces real neutron-density separation in
+  shale. Four facies over a seeded bed sequence, smoothed to model tool
+  vertical resolution. Constants are cited textbook typical values and are
+  labelled illustrative, not calibrated to any basin.
+- **A defect catalogue with recorded ground truth.** Six kinds — `null_gap`,
+  `washout`, `spike`, `flatline`, `unit_mismatch`, `missing_curve`. The
+  generator writes a `<well>.truth.json` manifest beside each LAS recording
+  the bed sequence and every defect it injected.
+- **A second synthetic well.** SYNTH-02 partially overlaps SYNTH-01, omits the
+  sonic curve, and declares neutron porosity in the wrong units, so
+  cross-well comparison has real findings.
+- **Eval scenario 02** (compare wells), and scenario 01 rewritten. Neither
+  scenario file carries expectations any more: both read the generator's
+  manifest, so a generator change cannot leave a stale expectation behind.
+  `make eval` now runs every scenario in the directory.
+- **`list_supported_units`.** Every convertible pair with its physical
+  quantity, derived from the conversion table so it cannot advertise a pair
+  `convert_units` would reject. The supported units were previously
+  discoverable only by calling the tool wrong and reading the error.
+
+### Notes
+
+The manifest is only useful if it is honest, so `TestManifestDoesNotLie`
+reads each written LAS back through the parser and verifies every recorded
+defect is actually present. It covers all six kinds, and a new kind that is
+not verified fails a coverage test. Without it the eval would be asserting
+against a claim rather than a fact.
+
 ## 0.4.0
 
 First release published to PyPI, the Glama directory, and Smithery.

@@ -72,8 +72,10 @@ uninstall-claude: unhide
 generate: unhide
 	uv run --no-sync python -m examples.sample_data.generate
 
+# Runs every scenario under evals/scenarios/. Adding a scenario file is
+# enough; there is no list to keep in sync.
 eval: unhide
-	uv run --no-sync python -m evals.run_eval --scenario evals/scenarios/01_well_log_qc.yaml
+	uv run --no-sync python -m evals.run_eval --all
 
 # Release artefacts. `dist` produces what goes to PyPI; `bundle` produces the
 # .mcpb that goes to Smithery. Both land in dist/, which is gitignored.

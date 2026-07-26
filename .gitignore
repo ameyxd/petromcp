@@ -29,5 +29,6 @@ htmlcov/
 
 # Generated demo data and ephemeral run output
 examples/sample_data/synthetic_*.las
+examples/sample_data/*.truth.json
 evals/results/
 .eval_tmp/

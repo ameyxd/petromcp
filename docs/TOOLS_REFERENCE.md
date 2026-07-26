@@ -35,7 +35,7 @@ picker in your host application.
 Compares two LAS files. Reports common curves, curves unique to each file,
 depth-range overlap, per-curve unit consistency, and human-readable issue
 flags suitable for the LLM to quote. Strict case-sensitive matching on
-mnemonics and units in v0.2; a normalisation layer can be added later if
+mnemonics and units; a normalisation layer can be added later if
 real-world use turns up false mismatches.
 
 ## convert_units
@@ -44,10 +44,22 @@ real-world use turns up false mismatches.
 
 Converts a value between supported petroleum units. Strict case-sensitive
 matching: `Ft` is not `ft`. Raises `UnitConversionError` for unsupported
-pairs. Supported pairs as of v0.2:
+pairs. Call `list_supported_units` rather than relying on this list staying
+current:
 
 - Length: ft <-> m
 - Pressure: psi <-> kPa, psi <-> bar
 - Volume: bbl <-> m3
 - Temperature: degF <-> degC
 - Permeability: mD <-> m2
+
+## list_supported_units
+
+`list_supported_units() -> SupportedUnits`
+
+Every pair `convert_units` accepts, both directions, each labelled with its
+physical quantity. Derived from the same table the converter uses, so it
+cannot advertise a pair that would then be rejected.
+
+Prefer this over guessing at unit spellings: matching is strict and
+case-sensitive, and a wrong guess costs a failed tool call.

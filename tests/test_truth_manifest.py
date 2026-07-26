@@ -34,8 +34,11 @@ def test_bed_rejects_inverted_interval() -> None:
 
 
 def test_defect_record_requires_a_known_kind() -> None:
+    """Validated through `model_validate` because that is how an unknown kind
+    would actually arrive: from a manifest file on disk, which carries no
+    static types. The constructor is unreachable with a bad literal."""
     with pytest.raises(ValidationError):
-        DefectRecord(kind="not_a_real_defect")
+        DefectRecord.model_validate({"kind": "not_a_real_defect"})
 
 
 def test_interval_defect_requires_its_interval() -> None:

@@ -21,7 +21,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: uv sync
       - run: uv run pytest
-      - run: uv run python -m evals.run_eval --scenario evals/scenarios/01_well_log_qc.yaml
+      - run: uv run python -m evals.run_eval --all
 
   # Lint and types target one version (3.12) — running them per-matrix-entry
   # would report the same findings twice.

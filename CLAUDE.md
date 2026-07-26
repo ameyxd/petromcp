@@ -35,9 +35,20 @@ had drifted from pyproject.
 Publishing runbook: `docs/PUBLISHING.md`. Directory metadata lives in
 `glama.json`, `server.json`, and `packaging/mcpb/`.
 
-Next is Tier 2 — DLIS slice gets its own design + plan + execution cycle.
-SEG-Y, pump cards, Plotly, additional hosts, and walkthroughs follow after
-DLIS lands.
+v0.5 (2026-07-26) replaces the sine-wave synthetic generator with a facies
+model whose curves derive from the density-porosity and Wyllie relations,
+adds a six-kind defect catalogue with an emitted ground-truth manifest, a
+second well, eval scenario 02, and `list_supported_units`. Design:
+`docs/superpowers/specs/2026-07-26-petromcp-v0.5-synthetic-facies-design.md`.
+
+The manifest pattern is the thing to preserve: the generator records what it
+injected, the eval asserts against that record, and `TestManifestDoesNotLie`
+verifies the record against the written file. Do not add an expectation to a
+scenario YAML — put it in the generator and let the eval read it.
+
+Next is v0.6 (walkthroughs, built on this data), then Tier 2 — the DLIS
+slice, which gets its own design + plan + execution cycle. SEG-Y, pump
+cards, Plotly, and additional hosts follow after DLIS lands.
 
 ## Conventions
 
@@ -85,19 +96,15 @@ DLIS lands.
 
 ## Things to revisit later
 
-- Synthetic curves should reflect plausible petrophysical relationships
-  (RHOB and NPHI inversely correlated in shale, etc.) so the QC eval surfaces
-  real findings rather than uniform noise. Tracked for the synthetic generator.
+- **SME review of the facies table** in `examples/sample_data/facies.py`.
+  Values are cited textbook typicals, not calibrated. Same practitioner pass
+  as the QC heuristics below.
 - The `qc_a_well_log` prompt encodes specific QC heuristics (RHOB 1.8-3.0,
   GR non-negative, gap thresholds above 1%, expected curve set for an
   open-hole triple combo). These are defensible defaults but should be
   sanity-checked by an SME — a working petrophysicist — before launch
   outreach. Wrong heuristics in the launch demo would hurt credibility
   with the audience that matters most.
-- **`convert_units` has no discovery tool.** The supported pairs are only
-  discoverable by calling it wrong and reading the error. `petro-mcp` ships
-  `list_oilfield_units` and is straightforwardly right about this. Add
-  `list_supported_units`; it is a small job.
 - The access log never rotates. It grows unbounded at
   `~/.petromcp/access.log`.
 - Two config-reading paths exist: `config.py` (Pydantic-validated) and
