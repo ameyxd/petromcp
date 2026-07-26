@@ -28,6 +28,7 @@ from examples.sample_data.generate import generate, truth_path_for
 from examples.sample_data.truth import WellTruth
 from examples.sample_data.wells import CURVE_UNITS, WELLS
 from petromcp.models.las import CurveSummary
+from petromcp.models.shared import DepthRange
 from petromcp.tools.compare import compare_well_logs
 from petromcp.tools.las import read_las_curve, summarize_las_curves
 
@@ -84,22 +85,34 @@ def _check_single_well_qc(well: str, work_dir: Path) -> list[str]:
                 )
 
         elif d.kind == "flatline":
-            # Not visible in a whole-curve summary; read the interval.
+            # Not visible in a whole-curve summary, so read the interval itself.
+            #
+            # Pass the range explicitly rather than reading the whole curve and
+            # slicing. An unscoped read downsamples to 500 samples, which both
+            # thins a short interval down to a handful of points and — once any
+            # null is filtered out of the values — shifts every later value
+            # onto the wrong depth.
             if d.curve and d.top is not None and d.base is not None:
                 data = read_las_curve(
                     str(las_path),
                     d.curve,
-                    depth_range=None,
+                    depth_range=DepthRange(start=d.top, stop=d.base),
                     allowed_paths=roots,
                 )
-                values = np.asarray(
+                inside = np.asarray(
                     [v for v in data.values if v is not None], dtype=float
                 )
-                depths = np.asarray(data.depths[: len(values)], dtype=float)
-                inside = values[(depths >= d.top) & (depths <= d.base)]
-                if inside.size > 1 and float(np.ptp(inside)) > 1e-9:
+                if inside.size < 2:
+                    # Silently skipping here would let the scenario pass while
+                    # checking nothing.
                     failures.append(
-                        f"flatline on {d.curve} at {d.top}-{d.base} is not flat"
+                        f"flatline on {d.curve} at {d.top}-{d.base}: only "
+                        f"{inside.size} non-null sample(s), cannot verify"
+                    )
+                elif float(np.ptp(inside)) > 1e-9:
+                    failures.append(
+                        f"flatline on {d.curve} at {d.top}-{d.base} is not flat "
+                        f"(spread {float(np.ptp(inside)):.6g} over {inside.size} samples)"
                     )
 
         elif d.kind == "unit_mismatch":
