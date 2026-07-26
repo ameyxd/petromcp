@@ -1,11 +1,37 @@
 [project]
 name = "petromcp"
-version = "0.3.0"
-description = "MCP server that exposes petroleum data formats to Claude. v0.2 ships LAS; DLIS, SEG-Y, and pump cards next."
+version = "0.4.0"
+description = "Local-first MCP server for petroleum data. Reads LAS well logs; DLIS, SEG-Y, and pump cards next."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Amey Ambade" }]
+keywords = [
+    "mcp",
+    "model-context-protocol",
+    "petroleum",
+    "well-log",
+    "las",
+    "petrophysics",
+    "oil-and-gas",
+    "subsurface",
+    "lasio",
+    "claude",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Typing :: Typed",
+]
 dependencies = [
     "fastmcp>=2.0,<3",
     "lasio>=0.31,<0.32",
@@ -13,6 +39,13 @@ dependencies = [
     "numpy>=1.26",
     "pyyaml>=6.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/ameyxd/petromcp"
+Repository = "https://github.com/ameyxd/petromcp"
+Issues = "https://github.com/ameyxd/petromcp/issues"
+Changelog = "https://github.com/ameyxd/petromcp/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/ameyxd/petromcp/blob/main/docs/TOOLS_REFERENCE.md"
 
 [project.scripts]
 petromcp = "petromcp.cli:main"

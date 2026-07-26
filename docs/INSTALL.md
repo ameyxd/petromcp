@@ -12,23 +12,38 @@ the same `petromcp serve` command.
 
 ## Quick path (recommended)
 
-The repo ships with a `Makefile` that wraps the common workflows.
+petromcp is published on PyPI, so `uvx` can fetch and run it without a
+checkout. Add this to
+`~/Library/Application Support/Claude/claude_desktop_config.json`:
 
-    git clone https://github.com/<you>/petromcp
-    cd petromcp
-    make setup
-    make install-claude
+    {
+      "mcpServers": {
+        "petromcp": {
+          "command": "uvx",
+          "args": ["petromcp", "serve"]
+        }
+      }
+    }
 
 Restart Claude Desktop. petromcp's tools and the `qc_a_well_log` prompt
 should appear in a new conversation.
 
-`make help` lists every target.
+The first launch downloads the package, so it takes a few seconds longer
+than later ones.
 
-## Manual path
+## From a checkout
 
-If you prefer to drive `uv` directly:
+If you want to modify petromcp, clone it. The repo ships with a `Makefile`
+that wraps the common workflows; `make help` lists every target.
 
-    git clone https://github.com/<you>/petromcp
+    git clone https://github.com/ameyxd/petromcp
+    cd petromcp
+    make setup
+    make install-claude
+
+Or drive `uv` directly:
+
+    git clone https://github.com/ameyxd/petromcp
     cd petromcp
     uv sync
     uv run petromcp install --client claude-desktop
@@ -93,6 +108,10 @@ config, and your logs are left in place; remove them manually if desired.
   `~/Library/Application Support/Claude/claude_desktop_config.json` has an
   `mcpServers.petromcp` entry. Restart Claude Desktop after edits.
 - **`uv run petromcp` fails with `ModuleNotFoundError` on macOS.** Run
-  `make setup`, or apply the `chflags nohidden` workaround above.
+  `make setup`, or apply the `chflags nohidden` workaround above. This
+  affects checkouts only — the `uvx` path is unaffected.
+- **`read_las_curve` rejects your depth interval.** `depth_start` and
+  `depth_stop` must both be given or both omitted. A half-given interval is
+  an error rather than a silent fallback to the whole-curve view.
 - **Server fails to launch from Claude Desktop.** Run `make run` from a
   terminal; the error will be visible in stderr.
