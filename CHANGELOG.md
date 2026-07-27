@@ -32,6 +32,22 @@ channel name is unique only within a frame.
 
 ### Changed
 
+- **The access log rotates.** It grew by a line per tool call forever. It is the
+  audit trail for a tool whose privacy claim is "you can see everything it
+  read", and a file no editor will open is not an audit trail. Defaults to 5 MB
+  with five files kept; `max_bytes: 0` disables rotation.
+- **`petromcp config add-path` takes effect without a host restart.** The
+  allowlist is re-read when the config file changes, and revocation works the
+  same way. This does not change who can grant access — anyone able to edit the
+  config could already have done so on the next restart — and a change to the
+  allowlist is now itself written to the access log. Default-deny is unchanged
+  and covered by tests.
+- **The CLI validates the config through the same model the server uses.** There
+  were two readers: raw `json.loads` here and validated `load_config` there. A
+  malformed config written via the CLI surfaced at server start, where the host
+  swallows the traceback and reports only that the server would not launch.
+  Unknown keys are still preserved, so a newer petromcp's config survives an
+  older one's `add-path`.
 - `null_gap` writes `np.nan` rather than the LAS `-999.25` sentinel. In a DLIS
   channel that sentinel would be a real measurement of minus nine hundred. Each
   writer now encodes absence in its own convention; the LAS output is unchanged.

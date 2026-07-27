@@ -51,9 +51,16 @@ They are built by calling the real tools, committed, and guarded by a
 staleness test plus a CI `--check` run. Do not hand-edit them; change the
 builder and run `make walkthroughs`.
 
-Next is Tier 2 — the DLIS slice, which gets its own design + plan + execution
-cycle. SEG-Y, pump cards, Plotly, and additional hosts follow after DLIS
-lands.
+v0.7 (2026-07-26) ships the DLIS slice and the Wave 3 hardening: log rotation,
+one validated config reader, and an allowlist that re-reads on change. Design:
+`docs/superpowers/specs/2026-07-26-petromcp-v0.7-dlis-slice-design.md`.
+
+DLIS structure to keep in mind: N logical files x M frames x K channels, and a
+channel name is unique only within a frame. `read_dlis_channel` refuses an
+ambiguous name rather than guessing; do not "helpfully" make it pick one.
+
+Next: SEG-Y headers, then pump cards, then Plotly resources and additional
+hosts.
 
 ## Conventions
 
@@ -110,14 +117,6 @@ lands.
   sanity-checked by an SME — a working petrophysicist — before launch
   outreach. Wrong heuristics in the launch demo would hurt credibility
   with the audience that matters most.
-- The access log never rotates. It grows unbounded at
-  `~/.petromcp/access.log`.
-- Two config-reading paths exist: `config.py` (Pydantic-validated) and
-  `cli.py::_read_user_config` (raw JSON). A malformed config written via the
-  CLI is not caught until the server starts.
-- The allowlist is captured at startup, so `config add-path` always needs a
-  host restart. The refusal message says so, but a `reload` tool or a
-  per-call config read would be friendlier.
 - If Smithery install failures show up, the fallback for the MCPB bundle is
   a self-contained `server.type: "binary"` build with an embedded
   interpreter (~60-100MB per platform), removing the `uv` requirement.

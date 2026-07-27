@@ -12,7 +12,7 @@ from pathlib import Path
 from fastmcp import FastMCP
 
 from petromcp import __version__
-from petromcp.config import load_config
+from petromcp.config import Allowlist
 from petromcp.models.compare import ComparisonReport
 from petromcp.models.dlis import ChannelListing, DLISChannelData, DLISSummary
 from petromcp.models.las import CurveData, CurveSummary, LASSummary
@@ -74,11 +74,26 @@ READ_ONLY = {
 }
 
 
-def build_app(allowed_paths: list[Path] | None = None) -> FastMCP:
-    cfg = load_config()
-    roots: list[Path] = (
-        list(allowed_paths) if allowed_paths is not None else list(cfg.allowed_paths)
-    )
+def build_app(
+    allowed_paths: list[Path] | None = None,
+    allowlist: Allowlist | None = None,
+) -> FastMCP:
+    """Build the server.
+
+    `allowed_paths` pins a fixed list, which tests use. Otherwise an `Allowlist`
+    re-reads `~/.petromcp/config.json` when it changes, so
+    `petromcp config add-path` takes effect without restarting the host.
+    """
+    if allowed_paths is not None:
+        pinned = list(allowed_paths)
+
+        def roots() -> list[Path]:
+            return pinned
+    else:
+        resolver = allowlist or Allowlist()
+
+        def roots() -> list[Path]:
+            return resolver.current()
     # `version` matters beyond cosmetics: without it FastMCP reports its own
     # version in serverInfo, which is what hosts and public directories show.
     app: FastMCP = FastMCP(
@@ -91,12 +106,12 @@ def build_app(allowed_paths: list[Path] | None = None) -> FastMCP:
     @app.tool(title="Read LAS header", annotations=READ_ONLY)
     def read_las_file(path: str) -> LASSummary:
         """Header-level summary of a LAS file. No curve data."""
-        return _read_las_file(path, roots)
+        return _read_las_file(path, roots())
 
     @app.tool(title="Summarize LAS curves", annotations=READ_ONLY)
     def summarize_las_curves(path: str) -> CurveSummary:
         """Per-curve summary statistics for a LAS file."""
-        return _summarize_las_curves(path, roots)
+        return _summarize_las_curves(path, roots())
 
     @app.tool(title="Read one LAS curve", annotations=READ_ONLY)
     def read_las_curve(
@@ -112,13 +127,13 @@ def build_app(allowed_paths: list[Path] | None = None) -> FastMCP:
         two is an error, not a partial interval.
         """
         depth_range = DepthRange.from_optional(depth_start, depth_stop)
-        return _read_las_curve(path, curve_name, depth_range=depth_range, allowed_paths=roots)
+        return _read_las_curve(path, curve_name, depth_range=depth_range, allowed_paths=roots())
 
     @app.tool(title="Compare two well logs", annotations=READ_ONLY)
     def compare_well_logs(path_a: str, path_b: str) -> ComparisonReport:
         """Compare two LAS files. Reports common curves, depth overlap,
         unit consistency, and human-readable issue flags."""
-        return _compare_well_logs(path_a, path_b, roots)
+        return _compare_well_logs(path_a, path_b, roots())
 
     @app.tool(title="Convert units", annotations=READ_ONLY)
     def convert_units(value: float, from_unit: str, to_unit: str) -> float:
@@ -134,7 +149,7 @@ def build_app(allowed_paths: list[Path] | None = None) -> FastMCP:
 
         Start here. A DLIS can hold hundreds of channels across several frames,
         so this is the cheap call that tells you what to ask for next."""
-        return _read_dlis_file(path, roots)
+        return _read_dlis_file(path, roots())
 
     @app.tool(title="List DLIS channels", annotations=READ_ONLY)
     def list_dlis_channels(path: str, frame: str | None = None) -> ChannelListing:
@@ -143,7 +158,7 @@ def build_app(allowed_paths: list[Path] | None = None) -> FastMCP:
         Channel names are unique only within a frame, so the frame and logical
         file in each row are what make a channel addressable. Pass `frame` to
         narrow a large file."""
-        return _list_dlis_channels(path, roots, frame=frame)
+        return _list_dlis_channels(path, roots(), frame=frame)
 
     @app.tool(title="Read one DLIS channel", annotations=READ_ONLY)
     def read_dlis_channel(
@@ -169,7 +184,7 @@ def build_app(allowed_paths: list[Path] | None = None) -> FastMCP:
             logical_file=logical_file,
             depth_start=depth_start,
             depth_stop=depth_stop,
-            allowed_paths=roots,
+            allowed_paths=roots(),
         )
 
     @app.tool(title="List supported units", annotations=READ_ONLY)
