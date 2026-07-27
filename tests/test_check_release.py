@@ -208,3 +208,33 @@ class TestReleaseNotes:
         version = _declared_version()
         body = extract((cr.ROOT / "CHANGELOG.md").read_text(), version)
         assert len(body) > 50, f"changelog section for {version} is nearly empty"
+
+
+class TestRegistryMetadata:
+    """The official MCP registry enforces limits server.json must respect.
+    Discovered by running `mcp-publisher validate`, which rejected a
+    200-character description with a 422 — after the docs already claimed the
+    file was ready to publish."""
+
+    def test_the_real_tree_satisfies_the_registry(self) -> None:
+        assert cr.check_registry_metadata() == []
+
+    def test_catches_a_description_over_the_limit(self, tree: Path) -> None:
+        _edit_json(
+            tree / "server.json",
+            lambda d: d.update(description="x" * (cr.REGISTRY_DESCRIPTION_LIMIT + 1)),
+        )
+        problems = cr.check_registry_metadata()
+        assert problems
+        assert str(cr.REGISTRY_DESCRIPTION_LIMIT) in str(problems[0])
+
+    def test_a_description_at_the_limit_is_allowed(self, tree: Path) -> None:
+        _edit_json(
+            tree / "server.json",
+            lambda d: d.update(description="x" * cr.REGISTRY_DESCRIPTION_LIMIT),
+        )
+        assert cr.check_registry_metadata() == []
+
+    def test_catches_an_empty_description(self, tree: Path) -> None:
+        _edit_json(tree / "server.json", lambda d: d.update(description=""))
+        assert cr.check_registry_metadata()

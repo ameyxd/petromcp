@@ -138,6 +138,33 @@ def check_console_scripts() -> list[Problem]:
     return problems
 
 
+#: The official MCP registry rejects a description longer than this.
+REGISTRY_DESCRIPTION_LIMIT = 100
+
+
+def check_registry_metadata() -> list[Problem]:
+    """server.json must satisfy the registry's own constraints.
+
+    The limit below is not guesswork: `mcp-publisher validate` rejected a
+    200-character description with a 422. Checking it here means the failure
+    lands while editing rather than midway through a release.
+    """
+    server = _json_file("server.json")
+    problems: list[Problem] = []
+    description = server.get("description", "")
+    if len(description) > REGISTRY_DESCRIPTION_LIMIT:
+        problems.append(
+            Problem(
+                "server.json",
+                f"description is {len(description)} characters; the MCP registry "
+                f"rejects anything over {REGISTRY_DESCRIPTION_LIMIT}",
+            )
+        )
+    if not description:
+        problems.append(Problem("server.json", "description is empty"))
+    return problems
+
+
 def check_bundle_launch_command() -> list[Problem]:
     """The bundle's command must be one uvx actually accepts."""
     proj = _pyproject()["project"]
@@ -223,6 +250,7 @@ def verify_published(version: str) -> list[Problem]:
 CHECKS = (
     ("versions agree", check_versions_agree),
     ("distribution name", check_distribution_name),
+    ("registry metadata", check_registry_metadata),
     ("console scripts", check_console_scripts),
     ("bundle launch command", check_bundle_launch_command),
     ("docs use a working command", check_docs_use_a_working_command),

@@ -178,8 +178,35 @@ jobs:
             exit 1
           fi
 
+  # The official MCP registry is metadata-only: it stores server.json and points
+  # at PyPI, so it must run after the package is confirmed live or it advertises
+  # an install that cannot resolve.
+  #
+  # Authenticates by GitHub OIDC, which proves ownership of the
+  # `io.github.ameyxd/*` namespace. No stored secret, same model as PyPI.
+  publish-registry:
+    needs: [verify, build, verify-published]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the publisher
+        run: |
+          curl -fsSL -o publisher.tar.gz \
+            "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz"
+          tar -xzf publisher.tar.gz mcp-publisher
+      - name: Validate before publishing
+        # Catches schema violations without side effects. It caught a
+        # description over the 100-character limit the first time it ran.
+        run: ./mcp-publisher validate
+      - run: ./mcp-publisher login github-oidc
+      - run: ./mcp-publisher publish
+
   github-release:
-    needs: [verify, build, verify-published, publish-smithery]
+    needs: [verify, build, verify-published, publish-smithery, publish-registry]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:

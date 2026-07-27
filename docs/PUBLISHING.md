@@ -221,11 +221,24 @@ embedded interpreter, at roughly 60-100MB per platform.
 several directories read, so listing here improves reach beyond the two
 above.
 
-    npx -y @modelcontextprotocol/publisher login github
-    npx -y @modelcontextprotocol/publisher publish
+**Automated.** `release.yml` publishes here on every tag, authenticating by
+GitHub OIDC — the `io.github.ameyxd/*` namespace is proven by the workflow's
+identity, so there is no secret to store.
 
-The namespace `io.github.ameyxd/petromcp` is proven by authenticating as
-that GitHub account.
+To do it by hand, the tool is a Go binary from the registry's releases, not an
+npm package (an earlier version of this document named
+`@modelcontextprotocol/publisher`, which does not exist):
+
+    curl -fsSL -o publisher.tar.gz \
+      "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_darwin_arm64.tar.gz"
+    tar -xzf publisher.tar.gz mcp-publisher
+    ./mcp-publisher validate
+    ./mcp-publisher login github
+    ./mcp-publisher publish
+
+`validate` checks `server.json` against the live registry without publishing,
+and is worth running after any edit — it rejects a description over 100
+characters, which `make release-check` now also catches.
 
 ## Release checklist
 

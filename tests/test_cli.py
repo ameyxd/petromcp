@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -44,21 +45,163 @@ def test_uninstall_is_idempotent(tmp_path: Path) -> None:
     uninstall_from_config(cfg, server_name="petromcp")  # should not raise
 
 
-def test_install_command_pins_project_and_skips_sync(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    cfg = tmp_path / "claude_desktop_config.json"
-    monkeypatch.setattr(cli, "CLAUDE_DESKTOP_CONFIG", cfg)
+def _point_host_at(monkeypatch: pytest.MonkeyPatch, client: str, path: Path) -> None:
+    """Redirect one host's config file, so no test touches a real one."""
+    from petromcp import hosts
 
-    rc = cli.main(["install", "--client", "claude-desktop"])
-    assert rc == 0
+    original = hosts.HOSTS[client]
+    monkeypatch.setitem(
+        hosts.HOSTS, client, replace(original, config_path=lambda: path)
+    )
 
-    args = json.loads(cfg.read_text())["mcpServers"]["petromcp"]["args"]
-    assert "--no-sync" in args
-    assert "--project" in args
-    project_idx = args.index("--project")
-    assert args[project_idx + 1] == str(cli.PROJECT_ROOT)
-    assert args[-2:] == ["petromcp", "serve"]
+
+class TestInstall:
+    """`petromcp install` writes one entry into a host's config.
+
+    Hosts nest that entry under different keys — `mcpServers` for Claude Desktop
+    and Cursor, `mcp.servers` for VS Code. Writing the wrong key produces a valid
+    file the host silently ignores, which is why every host is covered here.
+    """
+
+    def test_defaults_to_the_published_package(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Most users have no checkout, so the default must not assume one."""
+        cfg = tmp_path / "claude_desktop_config.json"
+        _point_host_at(monkeypatch, "claude-desktop", cfg)
+
+        assert cli.main(["install"]) == 0
+        entry = json.loads(cfg.read_text())["mcpServers"]["petromcp"]
+        assert entry["command"] == "uvx"
+        assert entry["args"] == ["petroleum-mcp", "serve"]
+
+    def test_from_source_pins_the_checkout_and_skips_sync(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """`--no-sync` matters on macOS: the implicit sync re-hides the .pth
+        files and breaks the entry point."""
+        cfg = tmp_path / "claude_desktop_config.json"
+        _point_host_at(monkeypatch, "claude-desktop", cfg)
+
+        assert cli.main(["install", "--from-source"]) == 0
+        args = json.loads(cfg.read_text())["mcpServers"]["petromcp"]["args"]
+        assert "--no-sync" in args
+        assert args[args.index("--project") + 1] == str(cli.PROJECT_ROOT)
+        assert args[-2:] == ["petromcp", "serve"]
+
+    @pytest.mark.parametrize(
+        "client", ["claude-desktop", "claude-code", "cursor", "codex", "vscode"]
+    )
+    def test_every_host_installs(
+        self, client: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from petromcp import hosts
+
+        cfg = tmp_path / f"{client}.json"
+        _point_host_at(monkeypatch, client, cfg)
+        assert cli.main(["install", "--client", client]) == 0
+
+        data = json.loads(cfg.read_text())
+        node = data
+        for key in hosts.HOSTS[client].server_key:
+            assert key in node, f"{client}: missing key {key!r}"
+            node = node[key]
+        assert "petromcp" in node
+
+    def test_vscode_uses_its_own_nesting_and_transport(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """VS Code reads `mcp.servers`, not `mcpServers`, and wants the
+        transport named. The wrong shape is silently ignored."""
+        cfg = tmp_path / "vscode.json"
+        _point_host_at(monkeypatch, "vscode", cfg)
+        assert cli.main(["install", "--client", "vscode"]) == 0
+
+        data = json.loads(cfg.read_text())
+        assert "mcpServers" not in data
+        assert data["mcp"]["servers"]["petromcp"]["type"] == "stdio"
+
+    def test_allow_path_is_written_into_the_host_entry(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        cfg = tmp_path / "claude_desktop_config.json"
+        _point_host_at(monkeypatch, "claude-desktop", cfg)
+        wells = tmp_path / "wells"
+        wells.mkdir()
+
+        assert cli.main(["install", "--allow-path", str(wells)]) == 0
+        args = json.loads(cfg.read_text())["mcpServers"]["petromcp"]["args"]
+        assert args[-2:] == ["--allow-path", str(wells)]
+
+    def test_existing_servers_are_preserved(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The file is the user's, and usually holds their other servers."""
+        cfg = tmp_path / "claude_desktop_config.json"
+        cfg.write_text(json.dumps({"mcpServers": {"other": {"command": "x"}},
+                                   "unrelated": {"keep": True}}))
+        _point_host_at(monkeypatch, "claude-desktop", cfg)
+
+        assert cli.main(["install"]) == 0
+        data = json.loads(cfg.read_text())
+        assert data["mcpServers"]["other"] == {"command": "x"}
+        assert data["unrelated"] == {"keep": True}
+
+    def test_reinstalling_replaces_rather_than_duplicates(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        cfg = tmp_path / "claude_desktop_config.json"
+        _point_host_at(monkeypatch, "claude-desktop", cfg)
+        cli.main(["install", "--from-source"])
+        cli.main(["install"])
+        entry = json.loads(cfg.read_text())["mcpServers"]["petromcp"]
+        assert entry["command"] == "uvx"
+
+    def test_refuses_to_overwrite_a_corrupt_config(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Overwriting would destroy the user's other servers."""
+        cfg = tmp_path / "claude_desktop_config.json"
+        cfg.write_text("{ this is not json")
+        _point_host_at(monkeypatch, "claude-desktop", cfg)
+        with pytest.raises(SystemExit, match="not valid JSON"):
+            cli.main(["install"])
+
+    def test_an_unknown_client_is_rejected_by_the_parser(self) -> None:
+        with pytest.raises(SystemExit):
+            cli.main(["install", "--client", "emacs"])
+
+
+class TestUninstall:
+    def test_removes_only_petromcp(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        cfg = tmp_path / "claude_desktop_config.json"
+        _point_host_at(monkeypatch, "claude-desktop", cfg)
+        cli.main(["install"])
+        cfg.write_text(json.dumps({**json.loads(cfg.read_text()),
+                                   "mcpServers": {**json.loads(cfg.read_text())["mcpServers"],
+                                                  "other": {"command": "x"}}}))
+
+        assert cli.main(["uninstall"]) == 0
+        servers = json.loads(cfg.read_text())["mcpServers"]
+        assert "petromcp" not in servers
+        assert "other" in servers
+
+    def test_uninstalling_when_absent_is_not_an_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _point_host_at(monkeypatch, "cursor", tmp_path / "nothing.json")
+        assert cli.main(["uninstall", "--client", "cursor"]) == 0
+
+    def test_uninstalls_from_the_host_it_was_told_to(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        vscode = tmp_path / "vscode.json"
+        _point_host_at(monkeypatch, "vscode", vscode)
+        cli.main(["install", "--client", "vscode"])
+        assert cli.main(["uninstall", "--client", "vscode"]) == 0
+        assert "petromcp" not in json.loads(vscode.read_text())["mcp"]["servers"]
 
 
 class TestServeAllowPath:

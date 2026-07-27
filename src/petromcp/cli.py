@@ -14,11 +14,8 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from petromcp import DISTRIBUTION_NAME, hosts
 from petromcp.config import Config
-
-CLAUDE_DESKTOP_CONFIG = (
-    Path("~/Library/Application Support/Claude/claude_desktop_config.json").expanduser()
-)
 
 # Project root: src/petromcp/cli.py -> src/petromcp -> src -> <root>
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -34,24 +31,91 @@ DEFAULT_USER_CONFIG: dict[str, object] = {
 }
 
 
+def _server_map(data: dict, keys: tuple[str, ...], *, create: bool) -> dict | None:
+    """Walk to the nested map a host keeps its servers in.
+
+    Hosts differ: `mcpServers` for Claude Desktop and Cursor, `mcp.servers` for
+    VS Code. Writing to the wrong key produces a valid file the host silently
+    ignores, which is why the key comes from the host definition rather than
+    being assumed.
+    """
+    node: dict = data
+    for key in keys[:-1]:
+        if key not in node:
+            if not create:
+                return None
+            node[key] = {}
+        node = node[key]
+        if not isinstance(node, dict):
+            raise SystemExit(f"petromcp: config key {key!r} is not an object")
+    last = keys[-1]
+    if last not in node:
+        if not create:
+            return None
+        node[last] = {}
+    target = node[last]
+    if not isinstance(target, dict):
+        raise SystemExit(f"petromcp: config key {last!r} is not an object")
+    return target
+
+
 def install_into_config(
-    config_path: Path, server_name: str, command: str, args: list[str]
+    config_path: Path,
+    server_name: str,
+    command: str,
+    args: list[str],
+    server_key: tuple[str, ...] = ("mcpServers",),
+    extra_fields: tuple[tuple[str, str], ...] = (),
 ) -> None:
+    """Add or replace one server entry, preserving everything else in the file.
+
+    The file belongs to the host and usually contains the user's other servers,
+    so the edit is targeted: only `<server_key>.<server_name>` is touched.
+    """
     config_path.parent.mkdir(parents=True, exist_ok=True)
-    data = json.loads(config_path.read_text()) if config_path.exists() else {}
-    servers = data.setdefault("mcpServers", {})
-    servers[server_name] = {"command": command, "args": args}
-    config_path.write_text(json.dumps(data, indent=2))
+    if config_path.exists():
+        try:
+            data = json.loads(config_path.read_text() or "{}")
+        except json.JSONDecodeError as exc:
+            # Overwriting would destroy the user's other servers.
+            raise SystemExit(
+                f"petromcp: {config_path} is not valid JSON ({exc}). "
+                "Fix or move it; refusing to overwrite a config that may hold "
+                "your other servers."
+            ) from exc
+    else:
+        data = {}
+    if not isinstance(data, dict):
+        raise SystemExit(f"petromcp: {config_path} must contain a JSON object.")
+
+    servers = _server_map(data, server_key, create=True)
+    assert servers is not None
+    entry: dict[str, object] = {"command": command, "args": args}
+    entry.update(dict(extra_fields))
+    servers[server_name] = entry
+    config_path.write_text(json.dumps(data, indent=2) + "\n")
 
 
-def uninstall_from_config(config_path: Path, server_name: str) -> None:
+def uninstall_from_config(
+    config_path: Path,
+    server_name: str,
+    server_key: tuple[str, ...] = ("mcpServers",),
+) -> bool:
+    """Remove the entry. Returns whether anything was removed."""
     if not config_path.exists():
-        return
-    data = json.loads(config_path.read_text())
-    servers = data.get("mcpServers", {})
-    if server_name in servers:
-        del servers[server_name]
-        config_path.write_text(json.dumps(data, indent=2))
+        return False
+    try:
+        data = json.loads(config_path.read_text() or "{}")
+    except json.JSONDecodeError:
+        return False
+    if not isinstance(data, dict):
+        return False
+    servers = _server_map(data, server_key, create=False)
+    if not servers or server_name not in servers:
+        return False
+    del servers[server_name]
+    config_path.write_text(json.dumps(data, indent=2) + "\n")
+    return True
 
 
 def _read_user_config(path: Path) -> dict[str, object]:
@@ -118,33 +182,63 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _launch_command(from_source: bool) -> tuple[str, list[str]]:
+    """How the host should start petromcp.
+
+    Published by default: `uvx petroleum-mcp serve` needs no checkout and
+    always resolves the current release. `--from-source` pins uv to this
+    checkout instead, for working on petromcp rather than using it — `--no-sync`
+    there prevents the implicit sync that re-applies UF_HIDDEN to .pth files on
+    macOS.
+    """
+    if from_source:
+        return "uv", ["run", "--no-sync", "--project", str(PROJECT_ROOT), "petromcp", "serve"]
+    return "uvx", [DISTRIBUTION_NAME, "serve"]
+
+
 def _cmd_install(args: argparse.Namespace) -> int:
-    if args.client != "claude-desktop":
-        print(f"unsupported client: {args.client}", file=sys.stderr)
+    try:
+        host = hosts.get(args.client)
+    except KeyError as exc:
+        print(str(exc), file=sys.stderr)
         return 2
-    # `--project` pins uv to the petromcp checkout regardless of where Claude
-    # Desktop spawns the process from. `--no-sync` prevents the implicit sync
-    # that re-applies UF_HIDDEN to .pth files on macOS.
+
+    command, launch_args = _launch_command(args.from_source)
+    launch_args = [*launch_args, *(a for path in args.allow_path for a in ("--allow-path", path))]
+    config_path = host.config_path()
+
     install_into_config(
-        CLAUDE_DESKTOP_CONFIG,
+        config_path,
         server_name="petromcp",
-        command="uv",
-        args=[
-            "run",
-            "--no-sync",
-            "--project",
-            str(PROJECT_ROOT),
-            "petromcp",
-            "serve",
-        ],
+        command=command,
+        args=launch_args,
+        server_key=host.server_key,
+        extra_fields=host.extra_fields,
     )
-    print(f"installed petromcp into {CLAUDE_DESKTOP_CONFIG}")
+    print(f"installed petromcp into {host.label} at {config_path}")
+    if host.note:
+        print(host.note)
+    print(f"  {command} {' '.join(launch_args)}")
+    print(f"Restart {host.label} for it to appear.")
+    if not args.allow_path:
+        print(
+            "petromcp can read nothing until you allow a directory:\n"
+            "  petromcp config add-path ~/petroleum/wells"
+        )
     return 0
 
 
-def _cmd_uninstall(_: argparse.Namespace) -> int:
-    uninstall_from_config(CLAUDE_DESKTOP_CONFIG, server_name="petromcp")
-    print(f"removed petromcp from {CLAUDE_DESKTOP_CONFIG}")
+def _cmd_uninstall(args: argparse.Namespace) -> int:
+    try:
+        host = hosts.get(args.client)
+    except KeyError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    config_path = host.config_path()
+    if uninstall_from_config(config_path, "petromcp", server_key=host.server_key):
+        print(f"removed petromcp from {host.label} at {config_path}")
+    else:
+        print(f"petromcp was not installed in {host.label} ({config_path})")
     return 0
 
 
@@ -223,13 +317,39 @@ def build_parser() -> argparse.ArgumentParser:
     )
     serve.set_defaults(func=_cmd_serve)
 
-    install = sub.add_parser("install", help="install into a host config")
-    install.add_argument("--client", default="claude-desktop")
+    clients = ", ".join(sorted(hosts.HOSTS))
+    install = sub.add_parser("install", help="install into an MCP host's config")
+    install.add_argument(
+        "--client",
+        default=hosts.DEFAULT_HOST,
+        choices=sorted(hosts.HOSTS),
+        metavar="CLIENT",
+        help=f"which host to configure. One of: {clients} (default: %(default)s)",
+    )
+    install.add_argument(
+        "--from-source",
+        action="store_true",
+        help="launch from this checkout instead of the published package",
+    )
+    install.add_argument(
+        "--allow-path",
+        action="extend",
+        nargs="+",
+        default=[],
+        metavar="DIR",
+        help="grant a directory in the host entry itself. Repeatable.",
+    )
     install.set_defaults(func=_cmd_install)
 
-    sub.add_parser("uninstall", help="remove from Claude Desktop config").set_defaults(
-        func=_cmd_uninstall
+    uninstall = sub.add_parser("uninstall", help="remove from an MCP host's config")
+    uninstall.add_argument(
+        "--client",
+        default=hosts.DEFAULT_HOST,
+        choices=sorted(hosts.HOSTS),
+        metavar="CLIENT",
+        help=f"which host to clean up. One of: {clients} (default: %(default)s)",
     )
+    uninstall.set_defaults(func=_cmd_uninstall)
 
     config = sub.add_parser("config", help="manage ~/.petromcp/config.json")
     config_sub = config.add_subparsers(dest="config_cmd", required=True)

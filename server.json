@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.ameyxd/petromcp",
   "title": "petromcp",
-  "description": "Local-first MCP server for petroleum data. Reads LAS well logs and DLIS files behind a default-deny path allowlist: structure, per-curve statistics, channel values, well comparison, and unit conversion.",
+  "description": "Local-first MCP server: read LAS well logs and DLIS files from your own disk.",
   "version": "0.7.0",
   "repository": {
     "url": "https://github.com/ameyxd/petromcp",

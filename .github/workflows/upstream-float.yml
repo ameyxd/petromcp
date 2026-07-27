@@ -1,0 +1,91 @@
+name: upstream-float
+
+# The dependency pins exist so a bad upstream release cannot break a petromcp
+# release. The cost of pinning is finding out late, so this runs the suite
+# against the *latest* versions weekly and opens an issue when they diverge.
+#
+# It never changes the pins. Its only job is to turn "petromcp broke for users
+# after they upgraded something" into "we knew a week ago".
+on:
+  schedule:
+    # Mondays, 06:00 UTC. Early enough in the week to act on.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  float:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install with every pin relaxed
+        id: install
+        run: |
+          # `--upgrade` alone respects the pins, so the constraint markers are
+          # stripped. The unpinned set is what a user gets on a fresh install
+          # once upstream moves.
+          uv pip install --system \
+            "fastmcp" "lasio" "dlisio" "pydantic" "numpy" "pyyaml" \
+            pytest ruff pyright dliswriter
+          uv pip install --system --no-deps -e .
+          {
+            echo "versions<<EOF"
+            uv pip list --system | grep -iE "^(fastmcp|lasio|dlisio|pydantic|numpy) " || true
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Suite against unpinned upstreams
+        id: suite
+        continue-on-error: true
+        run: pytest -q
+
+      - name: Evals against unpinned upstreams
+        id: evals
+        continue-on-error: true
+        run: python -m evals.run_eval --all
+
+      - name: Open an issue when upstream has broken us
+        if: steps.suite.outcome == 'failure' || steps.evals.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Upstream float: petromcp fails against latest dependencies"
+          # One open issue, updated, rather than a new one every Monday.
+          existing="$(gh issue list --state open --search "$title in:title" \
+            --json number --jq '.[0].number // empty')"
+          body="$(cat <<EOF
+          The weekly unpinned run failed. petromcp's own pins still hold, so
+          released versions are unaffected — but a user installing fresh once
+          these versions are common will hit this.
+
+          - test suite: \`${{ steps.suite.outcome }}\`
+          - eval scenarios: \`${{ steps.evals.outcome }}\`
+
+          Versions under test:
+
+          \`\`\`
+          ${{ steps.install.outputs.versions }}
+          \`\`\`
+
+          [Run log](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          EOF
+          )"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body" --label dependencies || \
+              gh issue create --title "$title" --body "$body"
+          fi
+
+      - name: Fail the run so the badge reflects reality
+        if: steps.suite.outcome == 'failure' || steps.evals.outcome == 'failure'
+        run: exit 1
