@@ -36,3 +36,5 @@ jobs:
       - run: uv sync
       - run: uv run ruff check .
       - run: uv run pyright
+      # Catches version drift and broken install commands long before a tag.
+      - run: uv run python -m scripts.check_release

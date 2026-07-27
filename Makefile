@@ -10,7 +10,7 @@ UNAME_S := $(shell uname -s)
 
 .PHONY: help setup sync clean unhide test lint typecheck check run \
         install-claude uninstall-claude generate eval walkthroughs dist bundle \
-        release-artifacts
+        release-check release-artifacts
 
 help:
 	@echo "petromcp targets:"
@@ -29,7 +29,8 @@ help:
 	@echo "  walkthroughs     regenerate examples/walkthroughs/*.md from real tool output"
 	@echo "  dist             build the sdist and wheel into dist/"
 	@echo "  bundle           build the MCPB bundle for Smithery into dist/"
-	@echo "  release-artifacts  check + dist + bundle (run before publishing)"
+	@echo "  release-check    version/command consistency across all files"
+	@echo "  release-artifacts  check + release-check + dist + bundle"
 	@echo "  clean            remove caches, build output, and eval tmp"
 
 setup sync:
@@ -93,7 +94,12 @@ dist: unhide
 bundle: unhide
 	uv run --no-sync python packaging/mcpb/build.py
 
-release-artifacts: check dist bundle
+# Version/command consistency across pyproject, server.json, the bundle
+# manifest, and the install docs. The release workflow runs this first.
+release-check: unhide
+	uv run --no-sync python -m scripts.check_release
+
+release-artifacts: check release-check dist bundle
 	@echo
 	@ls -lh dist/
 	@echo

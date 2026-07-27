@@ -1,0 +1,158 @@
+name: release
+
+# Tags carry no `v` prefix in this project; `scripts/check_release.py` fails a
+# v-prefixed tag rather than normalising it.
+on:
+  push:
+    tags: ["[0-9]+.[0-9]+*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run every check and build, but do not publish"
+        type: boolean
+        default: true
+
+# Least privilege by default; each job widens only what it needs.
+permissions:
+  contents: read
+
+jobs:
+  # Everything that can fail without side effects runs first. Nothing is
+  # published until this passes, because an unpublish is not available on PyPI.
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync
+
+      - name: Resolve the version being released
+        id: version
+        run: |
+          version="$(uv run python -c 'import tomllib,pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "releasing $version"
+
+      # The tag must match the declared version exactly. Skipped on manual
+      # runs, which have no tag.
+      - name: Tag matches the declared version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: uv run python -m scripts.check_release --tag "${GITHUB_REF#refs/tags/}"
+
+      - name: Release consistency checks
+        run: uv run python -m scripts.check_release
+
+      - run: uv run ruff check .
+      - run: uv run pyright
+      - run: uv run pytest
+      - run: uv run python -m evals.run_eval --all
+      - run: uv run python -m examples.walkthroughs.build --check
+
+      - name: Changelog has a section for this version
+        run: uv run python -m scripts.release_notes "${{ steps.version.outputs.version }}"
+
+  build:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync
+      - run: uv build
+      - run: uv run python -m packaging.mcpb.build || uv run python packaging/mcpb/build.py
+
+      - name: Confirm the wheel provides the console script uvx needs
+        run: |
+          uv run python - <<'PY'
+          import pathlib, zipfile
+          wheel = next(pathlib.Path("dist").glob("*.whl"))
+          z = zipfile.ZipFile(wheel)
+          name = next(n for n in z.namelist() if n.endswith("entry_points.txt"))
+          text = z.read(name).decode()
+          print(text)
+          assert "petroleum-mcp =" in text, (
+              "wheel has no console script matching the distribution name; "
+              "`uvx petroleum-mcp` would fail after a successful install"
+          )
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-pypi:
+    needs: [verify, build]
+    if: startsWith(github.ref, 'refs/tags/') || inputs.dry_run == false
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      # Trusted publishing: GitHub mints a short-lived OIDC token and PyPI
+      # verifies it. No API token is stored in this repository, and none has to
+      # be handed to anyone.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Drop the bundle before uploading
+        # PyPI rejects unknown file types, and the .mcpb belongs to the GitHub
+        # release rather than the package index.
+        run: rm -f dist/*.mcpb
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  # The check that would have caught two broken releases: run the command the
+  # documentation actually gives, against the real index, after publishing.
+  verify-published:
+    needs: [verify, publish-pypi]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync
+      - name: Wait for the index to serve the new version
+        run: |
+          version="${{ needs.verify.outputs.version }}"
+          for attempt in $(seq 1 30); do
+            if curl -sf "https://pypi.org/pypi/petroleum-mcp/$version/json" > /dev/null; then
+              echo "version $version is being served"
+              exit 0
+            fi
+            echo "attempt $attempt: not yet available, waiting"
+            sleep 10
+          done
+          echo "::error::$version never appeared on PyPI"
+          exit 1
+      - name: The documented command must work
+        run: uv run python -m scripts.check_release --verify-published
+
+  github-release:
+    needs: [verify, build, verify-published]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Release notes from the changelog
+        run: uv run python -m scripts.release_notes "${{ needs.verify.outputs.version }}" > notes.md
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF#refs/tags/}" \
+            --title "${GITHUB_REF#refs/tags/}" \
+            --notes-file notes.md \
+            dist/*.mcpb dist/*.whl dist/*.tar.gz

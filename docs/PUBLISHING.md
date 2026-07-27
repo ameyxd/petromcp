@@ -1,11 +1,45 @@
 # Publishing petromcp
 
+## Automated: push a tag
+
+`.github/workflows/release.yml` runs on any tag matching `[0-9]+.[0-9]+*`:
+
+    git tag 0.7.0 && git push origin 0.7.0
+
+It verifies, builds, publishes to PyPI, confirms the published package actually
+launches, and creates the GitHub release with notes taken from `CHANGELOG.md`.
+Nothing is published until every check passes, because PyPI has no unpublish.
+
+The order matters and is deliberate: the tag must equal the declared version,
+all five version locations must agree, the wheel must carry a console script
+matching the distribution name, and the bundle must not use `==`. Every one of
+those is a failure this project actually shipped.
+
+**One-time setup, required before the workflow can publish.** It uses trusted
+publishing, so no API token is stored anywhere:
+
+1. Go to <https://pypi.org/manage/project/petroleum-mcp/settings/publishing/>.
+2. Add a GitHub publisher: owner `ameyxd`, repository `petromcp`, workflow
+   `release.yml`, environment `pypi`.
+3. Create a `pypi` environment under the repository's Settings → Environments.
+
+Until that exists the publish step fails, which is safe — it fails before
+uploading rather than after. To exercise everything except publishing, run the
+workflow manually with `dry_run` left checked.
+
+Run the consistency checks any time without tagging:
+
+    make release-check
+
+## Manual fallback
+
+The rest of this document is the manual path, kept because the automated one
+depends on GitHub being available and on the trusted-publishing setup above.
 Three destinations, in dependency order. PyPI first — both directories point
 at the package, so publishing them before it exists yields listings whose
 install instructions fail.
 
-Everything below needs credentials, so these are commands to run yourself,
-not steps to automate.
+These commands need credentials, so they are yours to run.
 
 ## 0. Build and check the artefacts
 
