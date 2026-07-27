@@ -24,9 +24,16 @@ import json
 import re
 import subprocess
 import sys
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+
+# `tomllib` is stdlib only from 3.11. This project supports 3.10, and a dev
+# script that crashes on the declared floor is a dev script that stops being
+# run. Surfaced by pointing ruff at requires-python's floor instead of 3.12.
+if sys.version_info >= (3, 11):
+    import tomllib
+else:  # pragma: no cover - exercised on 3.10 in CI
+    import tomli as tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -40,8 +47,13 @@ class Problem:
         return f"{self.where}: {self.detail}"
 
 
+def load_pyproject(root: Path | None = None) -> dict:
+    """Parsed pyproject. Exposed so tests read it the same way this does."""
+    return tomllib.loads(((root or ROOT) / "pyproject.toml").read_text())
+
+
 def _pyproject() -> dict:
-    return tomllib.loads((ROOT / "pyproject.toml").read_text())
+    return load_pyproject()
 
 
 def _json_file(rel: str) -> dict:

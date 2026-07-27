@@ -9,3 +9,10 @@ description: >
 input:
   well_a: "SYNTH-01"
   well_b: "SYNTH-02"
+
+# The defect kinds this scenario exists to exercise. Asserted against the
+# generator's manifest, so removing one from the generator fails the eval
+# instead of silently dropping coverage.
+expect_defect_kinds:
+  - missing_curve
+  - unit_mismatch

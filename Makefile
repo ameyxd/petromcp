@@ -24,7 +24,7 @@ help:
 	@echo "  run              start the MCP server (stdio)"
 	@echo "  install-claude   install petromcp into Claude Desktop config"
 	@echo "  uninstall-claude remove petromcp from Claude Desktop config"
-	@echo "  generate         (re)build the synthetic LAS sample"
+	@echo "  generate         (re)build the synthetic LAS and DLIS samples"
 	@echo "  eval             run the local QC eval scenario"
 	@echo "  walkthroughs     regenerate examples/walkthroughs/*.md from real tool output"
 	@echo "  dist             build the sdist and wheel into dist/"
@@ -74,6 +74,7 @@ uninstall-claude: unhide
 
 generate: unhide
 	uv run --no-sync python -m examples.sample_data.generate
+	uv run --no-sync python -m examples.sample_data.dlis_generate
 
 # Regenerates the committed walkthrough docs from real tool output.
 # tests/test_walkthroughs.py fails if they drift.

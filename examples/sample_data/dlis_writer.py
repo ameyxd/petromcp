@@ -29,9 +29,17 @@ import os
 import sys
 import warnings
 from collections.abc import Iterator, Sequence
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
+
+#: Fixed creation time and file-set number, so output is byte-reproducible.
+#: Without these dliswriter stamps the current time and a random file-set
+#: number into the origin, and two runs of the same spec differ in 7 bytes —
+#: enough to make a determinism test fail and a diff useless.
+FIXED_CREATION_TIME = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+FIXED_FILE_SET_NUMBER = 1
 
 #: Length of the RP66 v1 Storage Unit Label, which opens a *physical* file. A
 #: second one mid-stream is what makes naive concatenation fail.
@@ -49,6 +57,7 @@ def write_minimal_dlis(
     company: str = "petromcp synthetic",
     origin_id: str = "PETROMCP",
     index_type: str = "BOREHOLE-DEPTH",
+    file_header_id: str | None = None,
 ) -> Path:
     """Write one logical file containing `frames`.
 
@@ -56,6 +65,11 @@ def write_minimal_dlis(
     across the whole file, not just within a frame, because RP66 forbids
     sharing a channel between frames — pass `DEPT_A`/`DEPT_B` rather than
     `DEPT` twice.
+
+    `file_header_id` is what a reader can actually use to tell logical files
+    apart. `origin_id` does *not* survive a round trip — it appears in no field
+    `dlisio` exposes — so when several logical files are concatenated, set this
+    or they are indistinguishable except by their frame names.
 
     Raises:
         ValueError: if a channel name is reused across frames, or a frame is
@@ -86,8 +100,19 @@ def write_minimal_dlis(
     # never hidden.
     with _quiet_dliswriter():
         dlis_file = DLISFile()
-        logical = dlis_file.add_logical_file()
-        logical.add_origin(origin_id, well_name=well_name, company=company)
+        logical = (
+            dlis_file.add_logical_file(fh_id=file_header_id)
+            if file_header_id is not None
+            else dlis_file.add_logical_file()
+        )
+        logical.add_origin(
+            origin_id,
+            well_name=well_name,
+            company=company,
+            # Pinned for reproducibility; see the module constants.
+            creation_time=FIXED_CREATION_TIME,
+            file_set_number=FIXED_FILE_SET_NUMBER,
+        )
 
         for frame_name, spec in frames.items():
             channels = [

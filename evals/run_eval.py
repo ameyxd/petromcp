@@ -23,6 +23,9 @@ from pathlib import Path
 import numpy as np
 import yaml
 
+from examples.sample_data.dlis_generate import generate as generate_dlis
+from examples.sample_data.dlis_generate import truth_path_for as dlis_truth_path_for
+from examples.sample_data.dlis_wells import DLIS_WELLS
 from examples.sample_data.facies import BIT_SIZE
 from examples.sample_data.generate import generate, truth_path_for
 from examples.sample_data.truth import WellTruth
@@ -30,6 +33,7 @@ from examples.sample_data.wells import CURVE_UNITS, WELLS
 from petromcp.models.las import CurveSummary
 from petromcp.models.shared import DepthRange
 from petromcp.tools.compare import compare_well_logs
+from petromcp.tools.dlis import list_dlis_channels, read_dlis_channel, read_dlis_file
 from petromcp.tools.las import read_las_curve, summarize_las_curves
 
 
@@ -170,6 +174,138 @@ def _check_compare_wells(well_a: str, well_b: str, work_dir: Path) -> list[str]:
     return failures
 
 
+def _check_dlis_qc(well: str, work_dir: Path) -> list[str]:
+    """Assert the DLIS tools surface every defect the generator recorded.
+
+    Structured the same way as the LAS check and for the same reason: the
+    expectations live in the emitted manifest, not in the scenario file, so a
+    generator change cannot leave a stale expectation behind.
+
+    Additionally asserts the frame layout, which LAS has no equivalent of and
+    which is the part of DLIS most likely to be mis-modelled.
+    """
+    dlis_path, _ = generate_dlis(DLIS_WELLS[well], work_dir / f"{well}.dlis")
+    truth = WellTruth.model_validate_json(
+        dlis_truth_path_for(dlis_path).read_text()
+    )
+    roots = [work_dir]
+    failures: list[str] = []
+
+    summary = read_dlis_file(str(dlis_path), roots)
+    reported_frames = {f.name for lf in summary.logical_files for f in lf.frames}
+    if reported_frames != set(truth.frames):
+        failures.append(
+            f"frames {sorted(reported_frames)} != manifest {sorted(truth.frames)}"
+        )
+
+    listing = list_dlis_channels(str(dlis_path), roots)
+    for frame, channels in truth.frames.items():
+        in_frame = {c.name for c in listing.channels if c.frame == frame}
+        expected = {*channels, truth.frame_indexes[frame]}
+        if in_frame != expected:
+            failures.append(
+                f"frame {frame}: channels {sorted(in_frame)} != {sorted(expected)}"
+            )
+
+    for defect in truth.defects:
+        if defect.top is None or defect.base is None or not defect.curve:
+            # `washout` carries no curve; handled below.
+            pass
+
+        if defect.kind == "null_gap" and defect.curve:
+            data = read_dlis_channel(
+                str(dlis_path), defect.curve,
+                depth_start=defect.top, depth_stop=defect.base, allowed_paths=roots,
+            )
+            if not data.values or any(v is not None for v in data.values):
+                failures.append(
+                    f"null_gap on {defect.curve} at {defect.top}-{defect.base} "
+                    "is not absent in the file"
+                )
+
+        elif defect.kind == "washout":
+            data = read_dlis_channel(
+                str(dlis_path), "CALI",
+                depth_start=defect.top, depth_stop=defect.base, allowed_paths=roots,
+            )
+            values = [v for v in data.values if v is not None]
+            if not values or min(values) <= BIT_SIZE:
+                failures.append(
+                    f"washout at {defect.top}-{defect.base} not visible: "
+                    f"CALI min {min(values) if values else 'n/a'} <= {BIT_SIZE}"
+                )
+
+        elif defect.kind == "spike" and defect.curve and defect.magnitude is not None:
+            data = read_dlis_channel(
+                str(dlis_path), defect.curve,
+                depth_start=defect.top - 0.25, depth_stop=defect.top + 0.25,
+                allowed_paths=roots,
+            )
+            values = [v for v in data.values if v is not None]
+            if not values or max(values) < defect.magnitude * 0.99:
+                failures.append(
+                    f"spike of {defect.magnitude} on {defect.curve} not visible"
+                )
+
+        elif defect.kind == "flatline" and defect.curve:
+            data = read_dlis_channel(
+                str(dlis_path), defect.curve,
+                depth_start=defect.top, depth_stop=defect.base, allowed_paths=roots,
+            )
+            values = np.asarray([v for v in data.values if v is not None], dtype=float)
+            if values.size < 2:
+                failures.append(
+                    f"flatline on {defect.curve}: only {values.size} sample(s)"
+                )
+            elif float(np.ptp(values)) > 1e-9:
+                failures.append(f"flatline on {defect.curve} is not flat")
+
+    return failures
+
+
+def _check_coverage(scenario: dict, work_dir: Path) -> list[str]:
+    """Assert the generator still injects the defect kinds this scenario covers.
+
+    Reading expectations from the manifest removes drift, but it has one blind
+    spot: delete a defect from the generator and the manifest stops recording
+    it, so the eval stops checking it and still reports PASS. Coverage vanishes
+    silently — the same failure shape as the LAS corpus that tested one tool.
+
+    `expect_defect_kinds` in the scenario file closes that. It is the one thing
+    a scenario declares rather than reads, because it is a statement about what
+    the scenario is *for*.
+    """
+    expected = set(scenario.get("expect_defect_kinds") or [])
+    if not expected:
+        return []
+
+    spec = scenario["input"]
+    # A comparison scenario's defects are spread across both wells — the unit
+    # mismatch and the missing curve live on the offset well, not the reference
+    # one — so coverage is the union.
+    wells = [w for w in (spec.get("well"), spec.get("well_a"), spec.get("well_b")) if w]
+
+    injected: set[str] = set()
+    for well in wells:
+        if scenario["kind"] == "dlis_qc":
+            path, _ = generate_dlis(DLIS_WELLS[well], work_dir / f"{well}.cov.dlis")
+            truth = WellTruth.model_validate_json(
+                dlis_truth_path_for(path).read_text()
+            )
+        else:
+            path, _ = generate(WELLS[well], work_dir / f"{well}.cov.las")
+            truth = WellTruth.model_validate_json(truth_path_for(path).read_text())
+        injected |= {d.kind for d in truth.defects}
+
+    missing = expected - injected
+    if missing:
+        return [
+            f"scenario expects defect kinds {sorted(missing)} but the generator "
+            "no longer injects them, so they are silently unchecked"
+        ]
+    return []
+
+
 def run_scenario(scenario_path: Path, work_dir: Path) -> tuple[bool, list[str]]:
     scenario = yaml.safe_load(scenario_path.read_text())
     kind = scenario["kind"]
@@ -179,9 +315,12 @@ def run_scenario(scenario_path: Path, work_dir: Path) -> tuple[bool, list[str]]:
         failures = _check_single_well_qc(spec["well"], work_dir)
     elif kind == "compare_wells":
         failures = _check_compare_wells(spec["well_a"], spec["well_b"], work_dir)
+    elif kind == "dlis_qc":
+        failures = _check_dlis_qc(spec["well"], work_dir)
     else:
         failures = [f"unknown scenario kind {kind!r}"]
 
+    failures = [*_check_coverage(scenario, work_dir), *failures]
     return (len(failures) == 0, failures)
 
 

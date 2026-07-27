@@ -3,6 +3,56 @@
 All notable changes to petromcp are recorded here. Versions follow
 [semantic versioning](https://semver.org/); tags carry no `v` prefix.
 
+## 0.7.0
+
+DLIS support. The format the LAS slice's structure was never tested against:
+one physical file holds several logging runs, each with several frames, and a
+channel name is unique only within a frame.
+
+### Added
+
+- **`read_dlis_file`** — structure only: logical files, frames, index types,
+  depth ranges, channel counts. A real DLIS carries hundreds of channels, so
+  the cheap structural call comes first.
+- **`list_dlis_channels`** — every channel with its frame and logical file,
+  which is what makes the result addressable. Optional `frame` filter.
+- **`read_dlis_channel`** — one channel's values and index, with the same
+  500-sample cap and explicit-interval behaviour as the LAS equivalent. When a
+  channel name occurs in more than one frame it **fails and lists the
+  candidates** instead of picking one, because the values differ and a guess
+  would be a confidently wrong answer.
+- **Synthetic DLIS wells**, reusing the facies model and defect catalogue
+  unchanged — a DLIS well and a LAS well from the same seed carry the same
+  geology, and a test asserts it. One well spans two logging runs, which LAS
+  cannot express at all.
+- **Bad-DLIS corpus**: every reading tool against every fixture, including a
+  LAS file handed to a DLIS tool. A coverage test fails if a new DLIS tool is
+  added without being registered.
+- **Eval scenario 03**, asserting the DLIS frame layout as well as the defects.
+
+### Changed
+
+- `null_gap` writes `np.nan` rather than the LAS `-999.25` sentinel. In a DLIS
+  channel that sentinel would be a real measurement of minus nine hundred. Each
+  writer now encodes absence in its own convention; the LAS output is unchanged.
+- Eval scenarios declare `expect_defect_kinds`. Reading expectations from the
+  generator's manifest removes drift but had one blind spot: delete a defect and
+  the manifest stops recording it, so the eval stops checking it and still
+  reports PASS. Coverage disappeared silently. The declared kinds are asserted
+  against the manifest, so that now fails.
+
+### Notes
+
+`dlisio` is a runtime dependency, pinned because it is a C++ extension whose
+parse behaviour can shift on a version bump. `dliswriter` is dev-only —
+petromcp never writes DLIS.
+
+Two things the DLIS work established by testing rather than reading docs.
+`dliswriter` cannot emit more than one logical file, but concatenating its
+output with the trailing Storage Unit Labels stripped produces a valid
+multi-run file. And a DLIS carrying only a Storage Unit Label loads cleanly with
+zero logical files — valid but empty, reported as such rather than refused.
+
 ## 0.6.0
 
 ### Added

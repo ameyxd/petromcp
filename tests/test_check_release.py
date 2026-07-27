@@ -60,10 +60,12 @@ def test_main_passes_on_the_real_tree() -> None:
     assert cr.main([]) == 0
 
 
-def test_tag_matching_the_declared_version_passes() -> None:
-    import tomllib
+def _declared_version() -> str:
+    return cr.load_pyproject()["project"]["version"]
 
-    version = tomllib.loads((cr.ROOT / "pyproject.toml").read_text())["project"]["version"]
+
+def test_tag_matching_the_declared_version_passes() -> None:
+    version = _declared_version()
     assert cr.check_tag_matches(version) == []
 
 
@@ -71,9 +73,7 @@ def test_rejects_a_v_prefixed_tag() -> None:
     """The project tags without a `v`. A v-prefixed tag is a convention
     violation, not an alternate spelling, so it must fail rather than be
     silently normalised."""
-    import tomllib
-
-    version = tomllib.loads((cr.ROOT / "pyproject.toml").read_text())["project"]["version"]
+    version = _declared_version()
     problems = cr.check_tag_matches(f"v{version}")
     assert problems
     assert "prefix" in str(problems[0])
@@ -203,10 +203,8 @@ class TestReleaseNotes:
 
     def test_current_version_has_release_notes(self) -> None:
         """The version about to ship must have something to say for itself."""
-        import tomllib
-
         from scripts.release_notes import extract
 
-        version = tomllib.loads((cr.ROOT / "pyproject.toml").read_text())["project"]["version"]
+        version = _declared_version()
         body = extract((cr.ROOT / "CHANGELOG.md").read_text(), version)
         assert len(body) > 50, f"changelog section for {version} is nearly empty"

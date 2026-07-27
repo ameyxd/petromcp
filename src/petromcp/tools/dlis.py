@@ -133,10 +133,14 @@ def read_dlis_file(path: str, allowed_paths: Sequence[Path | str]) -> DLISSummar
         for index, logical in enumerate(batch):
             origins = list(logical.origins)
             first = origins[0] if origins else None
+            # From the file header, not the origin. `origin.file_id` reports the
+            # header record's own name (always "FILE-HEADER"), which tells a
+            # caller nothing and looks like real identity if surfaced.
+            header = getattr(logical, "fileheader", None)
             logical_files.append(
                 LogicalFileInfo(
                     index=index,
-                    file_id=_text(getattr(first, "file_id", None)) if first else None,
+                    file_id=_text(getattr(header, "id", None)) if header else None,
                     well_name=_text(getattr(first, "well_name", None)) if first else None,
                     operator=_text(getattr(first, "company", None)) if first else None,
                     frames=[_frame_info(index, frame) for frame in logical.frames],

@@ -4,8 +4,8 @@
 # `petromcp` as too similar to the unrelated `petro-mcp`, which normalizes
 # to the same string once separators are collapsed.
 name = "petroleum-mcp"
-version = "0.6.0"
-description = "Local-first MCP server for petroleum data. Reads LAS well logs; DLIS, SEG-Y, and pump cards next."
+version = "0.7.0"
+description = "Local-first MCP server for petroleum data. Reads LAS well logs and DLIS files; SEG-Y and pump cards next."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -16,6 +16,7 @@ keywords = [
     "petroleum",
     "well-log",
     "las",
+    "dlis",
     "petrophysics",
     "oil-and-gas",
     "subsurface",
@@ -99,18 +100,26 @@ dev = [
     "pyright>=1.1.370",
     # Test-data generation only. petromcp itself never writes DLIS.
     "dliswriter>=1.2,<2",
+    # `tomllib` is stdlib from 3.11; the release scripts need a reader on 3.10.
+    "tomli>=2.0; python_version < '3.11'",
 ]
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+# The *floor* from requires-python, not the development version. Targeting 3.12
+# here made ruff suggest (and auto-fix to) 3.11+ syntax such as `datetime.UTC`,
+# which breaks 3.10 — leaving the CI matrix as the only thing standing between
+# an autofix and a broken release.
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N", "SIM"]
 
 [tool.pyright]
 include = ["src", "tests"]
-pythonVersion = "3.12"
+# Same reasoning as ruff's target-version: check against the oldest supported
+# interpreter, or 3.11+ APIs pass review and fail for users on 3.10.
+pythonVersion = "3.10"
 typeCheckingMode = "basic"
 reportMissingTypeStubs = false
 

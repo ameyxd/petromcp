@@ -14,8 +14,8 @@ can't, this was written for you.
 ## What this gives you
 
 LLM hosts cannot read binary or semi-structured petroleum formats. petromcp
-wraps the established open-source parsers — `lasio` today, with `dlisio`
-and `segyio` queued for the next slices — and exposes them as MCP tools, so
+wraps the established open-source parsers — `lasio` and `dlisio` today, with
+`segyio` queued for a later slice — and exposes them as MCP tools, so
 you can have a conversation with your data instead of copy-pasting curve
 values into chat.
 
@@ -120,17 +120,24 @@ they drift.
 | `compare_well_logs`     | Common curves, depth overlap, unit consistency, flags |
 | `convert_units`         | ft<->m, psi<->kPa, psi<->bar, bbl<->m3, degF<->degC, mD<->m2 |
 | `list_supported_units`  | Every convertible pair with its physical quantity      |
+| `read_dlis_file`        | DLIS structure: logical files, frames, index types     |
+| `list_dlis_channels`    | Every DLIS channel with its frame, units, and length   |
+| `read_dlis_channel`     | One DLIS channel's values, with a sampling cap         |
 | `qc_a_well_log` prompt  | Walks Claude through a standard QC pass               |
 
 Every tool is read-only and opens no network connection, and declares that
 in its MCP annotations. Full reference:
 [docs/TOOLS_REFERENCE.md](docs/TOOLS_REFERENCE.md).
 
-DLIS, SEG-Y, and pump card support land in subsequent releases.
+DLIS files hold several logging runs, each with several frames, so a channel
+name is unique only within a frame. `read_dlis_channel` refuses an ambiguous
+name and lists the candidates rather than guessing, because the values differ.
+
+SEG-Y and pump card support land in subsequent releases.
 
 ## Status
 
-v0.6 ships the LAS slice, a comparison tool, a units utility, and
+v0.7 ships the LAS and DLIS slices, a comparison tool, a units utility, and
 config-management CLI subcommands. The remaining formats are tracked in
 [SPEC_petromcp.md](SPEC_petromcp.md). The non-goals list there is real;
 read it before filing feature requests.
