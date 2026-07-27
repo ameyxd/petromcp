@@ -12,13 +12,13 @@ from pathlib import Path
 from fastmcp import FastMCP
 
 from petromcp import __version__
-from petromcp.config import Allowlist
+from petromcp.config import Allowlist, load_config
 from petromcp.models.compare import ComparisonReport
 from petromcp.models.dlis import ChannelListing, DLISChannelData, DLISSummary
 from petromcp.models.las import CurveData, CurveSummary, LASSummary
 from petromcp.models.shared import DepthRange
 from petromcp.models.units import SupportedUnits
-from petromcp.prompts.qc_a_well_log import PROMPT_NAME, PROMPT_TEMPLATE
+from petromcp.prompts.qc_a_well_log import PROMPT_NAME, build_prompt
 from petromcp.tools.compare import compare_well_logs as _compare_well_logs
 from petromcp.tools.dlis import (
     list_dlis_channels as _list_dlis_channels,
@@ -197,7 +197,9 @@ def build_app(
 
     @app.prompt(name=PROMPT_NAME)
     def qc_a_well_log() -> str:
-        return PROMPT_TEMPLATE
+        # Rendered from the user's configured thresholds, so the prompt cannot
+        # state a bound the config does not hold.
+        return build_prompt(load_config().qc)
 
     return app
 

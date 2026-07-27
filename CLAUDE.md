@@ -108,15 +108,24 @@ hosts.
 
 ## Things to revisit later
 
-- **SME review of the facies table** in `examples/sample_data/facies.py`.
-  Values are cited textbook typicals, not calibrated. Same practitioner pass
-  as the QC heuristics below.
-- The `qc_a_well_log` prompt encodes specific QC heuristics (RHOB 1.8-3.0,
-  GR non-negative, gap thresholds above 1%, expected curve set for an
-  open-hole triple combo). These are defensible defaults but should be
-  sanity-checked by an SME — a working petrophysicist — before launch
-  outreach. Wrong heuristics in the launch demo would hurt credibility
-  with the audience that matters most.
+- **SME review is unavailable, so the design stopped depending on it.** The QC
+  thresholds now live in `config.qc` with each default's source and confidence
+  recorded, the prompt is rendered from them so the two cannot drift, and the
+  prompt states outright that the bounds are conventional rather than
+  calibrated and tells the model to let the user judge. Facies constants in
+  `examples/sample_data/facies.py` are cited textbook typicals, labelled
+  not-calibrated in the module docstring.
+
+  One real error was found this way and fixed: the prompt described an
+  open-hole triple combo as GR/RHOB/NPHI/DT. A triple combo is resistivity +
+  density + neutron with gamma ray; adding sonic makes it a *quad* combo. So it
+  demanded a curve outside the suite and omitted the measurement that defines
+  it. Resistivity is now expected, with several mnemonics accepted because
+  contractors name it differently, and sonic is noted rather than flagged.
+
+  Residual risk is real but bounded: a wrong threshold is now a configurable
+  default that announces its own uncertainty, not an assertion of authority.
+  A practitioner pass would still be worth having before launch outreach.
 - If Smithery install failures show up, the fallback for the MCPB bundle is
   a self-contained `server.type: "binary"` build with an embedded
   interpreter (~60-100MB per platform), removing the `uv` requirement.

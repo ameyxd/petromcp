@@ -32,6 +32,18 @@ channel name is unique only within a frame.
 
 ### Changed
 
+- **`qc_a_well_log` no longer claims authority it does not have, and one of its
+  heuristics was wrong.** It described an open-hole triple combo as GR, RHOB,
+  NPHI and DT. A triple combo is resistivity, density and neutron porosity with
+  gamma ray; adding sonic makes it a quad combo — so the prompt demanded a curve
+  that is not part of the suite and omitted the measurement that defines one.
+  Resistivity is now expected, accepting `RESD`, `RT`, `ILD` and similar since
+  contractors name it differently, and sonic is noted rather than flagged.
+
+  Every threshold now lives in `config.qc` with its source and confidence
+  recorded, the prompt is rendered from those values so the two cannot disagree,
+  and the prompt says the bounds are conventional rather than calibrated and
+  asks the model to let the user judge a breach.
 - **The access log rotates.** It grew by a line per tool call forever. It is the
   audit trail for a tool whose privacy claim is "you can see everything it
   read", and a file no editor will open is not an audit trail. Defaults to 5 MB

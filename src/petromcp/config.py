@@ -43,6 +43,57 @@ class LoggingConfig(BaseModel):
         raise ValueError("log_file must be a string or Path")
 
 
+class QCThresholds(BaseModel):
+    """Thresholds the `qc_a_well_log` prompt flags against.
+
+    These are **defaults from published convention, not calibration**. No
+    practitioner has reviewed them against a specific basin, and a threshold
+    that is right for the Permian may be wrong for the North Sea. They live in
+    config precisely so that someone who knows better can change them without
+    editing code, and the prompt says so rather than presenting them as
+    authority.
+
+    Each default below records where it comes from and how much weight it
+    carries.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    #: Bulk density bounds, g/cm3. Firm: common matrix densities run 2.65
+    #: (quartz) to 2.87 (dolomite), and a porous rock saturated with fresh
+    #: fluid cannot read much below 2.0. A value outside this is a tool or
+    #: processing problem, not a rock.
+    rhob_min: float = 1.8
+    rhob_max: float = 3.0
+
+    #: Neutron porosity bounds, v/v. Firm: porosity is a fraction. Values above
+    #: 1 usually mean the curve is in percent and mislabelled.
+    nphi_min: float = 0.0
+    nphi_max: float = 1.0
+
+    #: Gap percentage worth mentioning. **A judgement call, not a standard.**
+    #: There is no accepted threshold; 1% is a low bar chosen so the QC pass
+    #: errs toward mentioning gaps rather than hiding them.
+    gap_percentage_warn: float = 1.0
+
+    #: The three measurement families of an open-hole *triple combo*:
+    #: resistivity, density, and neutron porosity, with gamma ray for
+    #: correlation. Resistivity mnemonics vary widely between contractors, so
+    #: the prompt asks for any of several rather than one exact name.
+    expected_curves: list[str] = Field(
+        default_factory=lambda: ["GR", "RHOB", "NPHI"]
+    )
+    #: Any one of these satisfies the resistivity leg.
+    resistivity_mnemonics: list[str] = Field(
+        default_factory=lambda: ["RESD", "RT", "ILD", "RT90", "AT90", "RES"]
+    )
+    #: Recorded by the density tool; used to judge hole condition.
+    hole_condition_curves: list[str] = Field(default_factory=lambda: ["CALI"])
+    #: Adding sonic to a triple combo makes it a *quad* combo, so its absence is
+    #: not a defect. Worth noting, not flagging.
+    optional_curves: list[str] = Field(default_factory=lambda: ["DT"])
+
+
 class Config(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -50,6 +101,7 @@ class Config(BaseModel):
     default_depth_units: str = "ft"
     default_pressure_units: str = "psi"
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    qc: QCThresholds = Field(default_factory=QCThresholds)
 
     @field_validator("allowed_paths", mode="before")
     @classmethod
