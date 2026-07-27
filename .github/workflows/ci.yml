@@ -22,6 +22,7 @@ jobs:
       - run: uv sync
       - run: uv run pytest
       - run: uv run python -m evals.run_eval --all
+      - run: uv run python -m examples.walkthroughs.build --check
 
   # Lint and types target one version (3.12) — running them per-matrix-entry
   # would report the same findings twice.

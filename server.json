@@ -3,7 +3,7 @@
   "name": "io.github.ameyxd/petromcp",
   "title": "petromcp",
   "description": "Local-first MCP server for petroleum data. Reads LAS well logs behind a default-deny path allowlist: header summaries, per-curve statistics, curve values, well-to-well comparison, and unit conversion.",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "repository": {
     "url": "https://github.com/ameyxd/petromcp",
     "source": "github"
@@ -14,7 +14,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "petroleum-mcp",
-      "version": "0.5.1",
+      "version": "0.6.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

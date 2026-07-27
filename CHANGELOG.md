@@ -3,6 +3,26 @@
 All notable changes to petromcp are recorded here. Versions follow
 [semantic versioning](https://semver.org/); tags carry no `v` prefix.
 
+## 0.6.0
+
+### Added
+
+- **Worked walkthroughs** under `examples/walkthroughs/`: a QC pass that finds
+  the planted density gap, washout, and gamma ray spike; a cross-well
+  comparison surfacing the depth overlap, the missing sonic curve, and the
+  neutron unit mismatch; and a short unit-conversion document.
+
+  Every value in them — every depth, every statistic, every JSON block — is
+  produced by calling the real tools against a freshly generated well.
+  Nothing is transcribed by hand. `make walkthroughs` regenerates them, and
+  both the test suite and CI fail if the committed copies drift from what the
+  tools currently return, so the most visible docs in the repo cannot rot into
+  a documented lie.
+
+  The documents lead with what was deliberately planted, and the manifest
+  table proving it, so a reader can check the tools found what was actually
+  there instead of taking the output on faith.
+
 ## 0.5.1
 
 ### Fixed

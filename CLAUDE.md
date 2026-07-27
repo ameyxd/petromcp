@@ -46,9 +46,14 @@ injected, the eval asserts against that record, and `TestManifestDoesNotLie`
 verifies the record against the written file. Do not add an expectation to a
 scenario YAML — put it in the generator and let the eval read it.
 
-Next is v0.6 (walkthroughs, built on this data), then Tier 2 — the DLIS
-slice, which gets its own design + plan + execution cycle. SEG-Y, pump
-cards, Plotly, and additional hosts follow after DLIS lands.
+v0.6 (2026-07-26) adds generated walkthroughs under `examples/walkthroughs/`.
+They are built by calling the real tools, committed, and guarded by a
+staleness test plus a CI `--check` run. Do not hand-edit them; change the
+builder and run `make walkthroughs`.
+
+Next is Tier 2 — the DLIS slice, which gets its own design + plan + execution
+cycle. SEG-Y, pump cards, Plotly, and additional hosts follow after DLIS
+lands.
 
 ## Conventions
 

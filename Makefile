@@ -9,7 +9,8 @@ SHELL := /bin/bash
 UNAME_S := $(shell uname -s)
 
 .PHONY: help setup sync clean unhide test lint typecheck check run \
-        install-claude uninstall-claude generate eval dist bundle release-artifacts
+        install-claude uninstall-claude generate eval walkthroughs dist bundle \
+        release-artifacts
 
 help:
 	@echo "petromcp targets:"
@@ -25,6 +26,7 @@ help:
 	@echo "  uninstall-claude remove petromcp from Claude Desktop config"
 	@echo "  generate         (re)build the synthetic LAS sample"
 	@echo "  eval             run the local QC eval scenario"
+	@echo "  walkthroughs     regenerate examples/walkthroughs/*.md from real tool output"
 	@echo "  dist             build the sdist and wheel into dist/"
 	@echo "  bundle           build the MCPB bundle for Smithery into dist/"
 	@echo "  release-artifacts  check + dist + bundle (run before publishing)"
@@ -71,6 +73,11 @@ uninstall-claude: unhide
 
 generate: unhide
 	uv run --no-sync python -m examples.sample_data.generate
+
+# Regenerates the committed walkthrough docs from real tool output.
+# tests/test_walkthroughs.py fails if they drift.
+walkthroughs: unhide
+	uv run --no-sync python -m examples.walkthroughs.build
 
 # Runs every scenario under evals/scenarios/. Adding a scenario file is
 # enough; there is no list to keep in sync.
