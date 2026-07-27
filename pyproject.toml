@@ -4,7 +4,7 @@
 # `petromcp` as too similar to the unrelated `petro-mcp`, which normalizes
 # to the same string once separators are collapsed.
 name = "petroleum-mcp"
-version = "0.7.0"
+version = "0.8.0"
 description = "Local-first MCP server for petroleum data. Reads LAS well logs and DLIS files; SEG-Y and pump cards next."
 readme = "README.md"
 requires-python = ">=3.10"

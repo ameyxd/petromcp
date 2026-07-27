@@ -3,6 +3,54 @@
 All notable changes to petromcp are recorded here. Versions follow
 [semantic versioning](https://semver.org/); tags carry no `v` prefix.
 
+## 0.8.0
+
+### Added
+
+- **`petromcp install` supports five hosts**: Claude Desktop, Claude Code,
+  Cursor, Codex CLI, and VS Code.
+
+      petromcp install --client cursor
+      petromcp install --client vscode --allow-path ~/petroleum/wells
+
+  Hosts nest the server entry under different keys — `mcpServers` for most,
+  `mcp.servers` for VS Code, which also wants the transport named. Writing the
+  wrong key produces a valid file the host ignores without complaint, so the
+  key comes from a per-host definition and each one is covered by a test.
+
+  The default launch command is now `uvx petroleum-mcp serve` rather than a
+  path into a local checkout, because most people installing do not have one.
+  `--from-source` keeps the previous behaviour for working on petromcp itself.
+  `--allow-path` writes directory grants straight into the host entry.
+
+- **A DLIS walkthrough** at `examples/walkthroughs/04-read-a-dlis-file.md`,
+  including the real text of the ambiguous-channel refusal rather than a
+  description of it.
+
+- **Weekly upstream float** (`upstream-float.yml`): the suite and evals run
+  against unpinned dependencies every Monday and open a single tracking issue
+  when upstream breaks us. Pins protect releases; their cost is finding out
+  late, and this converts that into a week's notice.
+
+### Changed
+
+- `install` refuses to overwrite a host config that will not parse. That file
+  usually holds the user's other servers, and overwriting it to add ours would
+  be a poor trade.
+- Releases now publish to Smithery and the official MCP registry as part of the
+  tagged pipeline. The Smithery listing had silently drifted two releases behind
+  — advertising six tools for a server with nine — because nothing published
+  there and nothing checked. The new job verifies the live listing matches the
+  bundle it just uploaded.
+- Registry publishing authenticates by GitHub OIDC, so like PyPI there is no
+  stored secret.
+
+### Fixed
+
+- `server.json` exceeded the official registry's 100-character description
+  limit and would have been rejected with a 422. `make release-check` now
+  asserts the limit, so it fails while editing rather than mid-release.
+
 ## 0.7.0
 
 DLIS support. The format the LAS slice's structure was never tested against:
