@@ -21,6 +21,8 @@ import numpy as np
 from examples.sample_data.truth import DefectRecord
 
 #: The conventional LAS absent-value marker, declared in `~Well` as NULL.
+#: This is a *LAS encoding* detail, not the in-memory representation — see
+#: `null_gap`. It stays here because the LAS writer needs it for the header.
 NULL_VALUE = -999.25
 
 #: How far a washed-out hole reads above bit size, inches.
@@ -47,10 +49,20 @@ def null_gap(
     top: float,
     base: float,
 ) -> DefectRecord:
-    """Blank an interval of one curve, as a tool failure or an edited log would."""
+    """Blank an interval of one curve, as a tool failure or an edited log would.
+
+    Absence is written as `np.nan`, the format-neutral in-memory
+    representation, and each writer encodes it in its own convention: LAS
+    declares `NULL = -999.25` in `~Well` and `lasio` substitutes it on write,
+    while DLIS has its own absent-value handling.
+
+    Writing `-999.25` here instead would be correct for LAS and wrong for
+    everything else — in a DLIS channel it is a real measurement of minus nine
+    hundred, and every statistic computed over it would be wrong.
+    """
     _require(curves, curve)
     curves[curve] = curves[curve].astype(float)
-    curves[curve][_interval(depth, top, base)] = NULL_VALUE
+    curves[curve][_interval(depth, top, base)] = np.nan
     return DefectRecord(kind="null_gap", curve=curve, top=top, base=base)
 
 
