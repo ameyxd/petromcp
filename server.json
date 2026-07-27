@@ -3,7 +3,7 @@
   "name": "io.github.ameyxd/petromcp",
   "title": "petromcp",
   "description": "Local-first MCP server: read LAS well logs and DLIS files from your own disk.",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "repository": {
     "url": "https://github.com/ameyxd/petromcp",
     "source": "github"
@@ -14,7 +14,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "petroleum-mcp",
-      "version": "0.8.0",
+      "version": "0.8.1",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

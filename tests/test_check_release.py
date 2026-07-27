@@ -238,3 +238,27 @@ class TestRegistryMetadata:
     def test_catches_an_empty_description(self, tree: Path) -> None:
         _edit_json(tree / "server.json", lambda d: d.update(description=""))
         assert cr.check_registry_metadata()
+
+
+class TestRegistryOwnershipMarker:
+    """The official registry proves that whoever claims the
+    `io.github.ameyxd/*` namespace also controls the PyPI package, by finding
+    `mcp-name: <server name>` in the published README.
+
+    Without it, publishing fails with a 400 *after* the package is already on
+    PyPI — so the fix costs a version bump. That is what happened on 0.8.0."""
+
+    def test_the_real_readme_carries_the_marker(self) -> None:
+        assert cr.check_registry_ownership_marker() == []
+
+    def test_catches_a_missing_marker(self, tree: Path) -> None:
+        readme = tree / "README.md"
+        readme.write_text(readme.read_text().replace("mcp-name:", "not-the-marker:"))
+        problems = cr.check_registry_ownership_marker()
+        assert problems
+        assert "mcp-name" in str(problems[0])
+
+    def test_the_marker_must_match_the_server_name(self, tree: Path) -> None:
+        """A marker naming a different server proves nothing."""
+        _edit_json(tree / "server.json", lambda d: d.update(name="io.github.someone/else"))
+        assert cr.check_registry_ownership_marker()

@@ -151,6 +151,15 @@ model: [SECURITY.md](SECURITY.md).
 
 MIT.
 
+<!--
+The official MCP registry verifies that whoever publishes
+`io.github.ameyxd/petromcp` also controls the PyPI package, by looking for this
+marker in the package's README. Removing it makes registry publishing fail with
+a 400; `make release-check` guards it.
+-->
+
+mcp-name: io.github.ameyxd/petromcp
+
 ---
 
 Built by [Amey Ambade](https://heyamey.com). I write about AI systems in

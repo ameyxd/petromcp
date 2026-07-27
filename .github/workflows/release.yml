@@ -117,18 +117,24 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
       - run: uv sync
-      - name: Wait for the index to serve the new version
+      # Poll the PEP 503 simple index, because that is what a resolver reads.
+      # An earlier version polled /pypi/<name>/<version>/json, which goes live
+      # minutes earlier — so the gate passed and `uvx` then failed to resolve
+      # the version that had supposedly landed.
+      - name: Wait for the simple index to list the new version
         run: |
           version="${{ needs.verify.outputs.version }}"
-          for attempt in $(seq 1 30); do
-            if curl -sf "https://pypi.org/pypi/petroleum-mcp/$version/json" > /dev/null; then
-              echo "version $version is being served"
+          for attempt in $(seq 1 40); do
+            if curl -sf "https://pypi.org/simple/petroleum-mcp/" \
+                 -H 'Accept: application/vnd.pypi.simple.v1+json' \
+               | python3 -c "import sys,json; sys.exit(0 if '$version' in json.load(sys.stdin)['versions'] else 1)"; then
+              echo "simple index lists $version"
               exit 0
             fi
-            echo "attempt $attempt: not yet available, waiting"
-            sleep 10
+            echo "attempt $attempt: simple index does not list $version yet"
+            sleep 15
           done
-          echo "::error::$version never appeared on PyPI"
+          echo "::error::$version never reached the simple index"
           exit 1
       - name: The documented command must work
         run: uv run python -m scripts.check_release --verify-published
@@ -206,7 +212,7 @@ jobs:
       - run: ./mcp-publisher publish
 
   github-release:
-    needs: [verify, build, verify-published, publish-smithery, publish-registry]
+    needs: [verify, build, verify-published, publish-smithery]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:

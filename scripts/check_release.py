@@ -165,6 +165,29 @@ def check_registry_metadata() -> list[Problem]:
     return problems
 
 
+def check_registry_ownership_marker() -> list[Problem]:
+    """The README must carry the registry's ownership marker.
+
+    The official registry proves that whoever claims `io.github.ameyxd/*` also
+    controls the PyPI package by finding `mcp-name: <server name>` in the
+    published README. Without it, publishing fails with a 400 *after* the
+    package is already on PyPI — so the fix costs a version bump. Cheaper to
+    catch here.
+    """
+    name = _json_file("server.json")["name"]
+    marker = f"mcp-name: {name}"
+    readme = (ROOT / "README.md").read_text()
+    if marker not in readme:
+        return [
+            Problem(
+                "README.md",
+                f"missing the registry ownership marker {marker!r}; "
+                "the MCP registry rejects the publish without it",
+            )
+        ]
+    return []
+
+
 def check_bundle_launch_command() -> list[Problem]:
     """The bundle's command must be one uvx actually accepts."""
     proj = _pyproject()["project"]
@@ -251,6 +274,7 @@ CHECKS = (
     ("versions agree", check_versions_agree),
     ("distribution name", check_distribution_name),
     ("registry metadata", check_registry_metadata),
+    ("registry ownership marker", check_registry_ownership_marker),
     ("console scripts", check_console_scripts),
     ("bundle launch command", check_bundle_launch_command),
     ("docs use a working command", check_docs_use_a_working_command),

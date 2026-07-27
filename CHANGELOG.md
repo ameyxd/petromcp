@@ -3,6 +3,25 @@
 All notable changes to petromcp are recorded here. Versions follow
 [semantic versioning](https://semver.org/); tags carry no `v` prefix.
 
+## 0.8.1
+
+### Fixed
+
+- **The official MCP registry rejected 0.8.0.** It verifies that whoever claims
+  the `io.github.ameyxd/*` namespace also controls the PyPI package, by looking
+  for `mcp-name: io.github.ameyxd/petromcp` in the *published* README. The
+  marker was absent, so publishing failed with a 400 after the package was
+  already on PyPI — which is why fixing it costs a version rather than an edit.
+  `make release-check` now asserts the marker, and that it names the same server
+  as `server.json`.
+- **The release pipeline waited on the wrong PyPI surface.** It polled
+  `/pypi/<name>/<version>/json`, which goes live minutes before the PEP 503
+  simple index that resolvers actually read. The gate passed, then `uvx` failed
+  to resolve the version it had just confirmed. It now polls the simple index.
+- The GitHub release no longer depends on registry publishing succeeding. A
+  registry problem still fails the run and stays visible, but it no longer
+  withholds the artifacts from a release that is otherwise complete.
+
 ## 0.8.0
 
 ### Added
