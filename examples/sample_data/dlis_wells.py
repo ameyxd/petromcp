@@ -156,7 +156,10 @@ DLIS_MULTI = DlisWellSpec(
         ),
         DlisLogicalFileSpec(
             origin_id="RUN-2",
-            frames=(DlisFrameSpec("CASED_HOLE", ("CALI",), "DEPT_CASED"),),
+            # GR is logged again on the second run. Repeat passes are ordinary,
+            # and they are what makes a channel name ambiguous across a file —
+            # the case `read_dlis_channel` refuses rather than guessing at.
+            frames=(DlisFrameSpec("CASED_HOLE", ("GR", "CALI"), "DEPT_CASED"),),
         ),
     ),
     apply_defects=_multi_run_defects,

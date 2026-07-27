@@ -133,8 +133,53 @@ jobs:
       - name: The documented command must work
         run: uv run python -m scripts.check_release --verify-published
 
-  github-release:
+  # Runs only after PyPI is confirmed serving the new version. The bundle pins
+  # `uvx petroleum-mcp@<version>`, so publishing it earlier would put a listing
+  # in front of users whose install cannot resolve.
+  #
+  # Without this the Smithery listing drifts silently: it sat two releases
+  # behind, advertising six tools for a server that had nine, and nothing
+  # failed.
+  publish-smithery:
     needs: [verify, build, verify-published]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    # Job-scoped, so the `if:` on the verification step can see it. A step-level
+    # `env:` is not visible to that step's own `if:` expression.
+    env:
+      SMITHERY_API_KEY: ${{ secrets.SMITHERY_API_KEY }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish the bundle
+        run: |
+          if [ -z "$SMITHERY_API_KEY" ]; then
+            echo "::warning::SMITHERY_API_KEY is not set; the Smithery listing will"
+            echo "::warning::stay on the previous release. Add the secret to automate it."
+            exit 0
+          fi
+          bundle="$(ls dist/*.mcpb)"
+          echo "publishing $bundle"
+          npx -y @smithery/cli@latest mcp publish "$bundle" -n ameyxd/petromcp
+
+      # Publishing "succeeding" is not the same as the listing being right; it
+      # was wrong for two releases while every job stayed green.
+      - name: Confirm the listing matches what was just published
+        if: env.SMITHERY_API_KEY != ''
+        run: |
+          expected="$(python3 -c "import json,zipfile,glob; print(len(json.loads(zipfile.ZipFile(glob.glob('dist/*.mcpb')[0]).read('manifest.json'))['tools']))")"
+          sleep 15
+          actual="$(curl -sf https://api.smithery.ai/servers/ameyxd/petromcp | python3 -c 'import sys,json; print(len(json.load(sys.stdin).get("tools") or []))')"
+          echo "bundle declares $expected tools; listing reports $actual"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::Smithery listing shows $actual tools, expected $expected"
+            exit 1
+          fi
+
+  github-release:
+    needs: [verify, build, verify-published, publish-smithery]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:

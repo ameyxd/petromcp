@@ -20,11 +20,20 @@ import json
 from pathlib import Path
 from typing import Any
 
+from examples.sample_data.dlis_generate import generate as generate_dlis
+from examples.sample_data.dlis_generate import truth_path_for as dlis_truth_path_for
+from examples.sample_data.dlis_wells import DLIS_WELLS
 from examples.sample_data.generate import generate, truth_path_for
 from examples.sample_data.truth import WellTruth
 from examples.sample_data.wells import WELLS
 from petromcp.models.shared import DepthRange
 from petromcp.tools.compare import compare_well_logs
+from petromcp.tools.dlis import (
+    AmbiguousChannelError,
+    list_dlis_channels,
+    read_dlis_channel,
+    read_dlis_file,
+)
 from petromcp.tools.las import read_las_curve, read_las_file, summarize_las_curves
 from petromcp.utils.units import supported_units
 
@@ -45,10 +54,16 @@ def _fence(payload: Any, lang: str = "json") -> str:
 
 
 def _trim_curve(data: Any, keep: int = 4) -> dict:
-    """Curve reads are long. Show the head and record what was elided."""
+    """Curve reads are long. Show the head and record what was elided.
+
+    Handles both curve models: the LAS one names its axis `depths`, the DLIS one
+    names it `index` because a DLIS frame may be indexed on time rather than
+    depth. Detecting the key beats maintaining two near-identical helpers.
+    """
     d = data.model_dump()
-    total = len(d["depths"])
-    d["depths"] = d["depths"][:keep]
+    axis = "depths" if "depths" in d else "index"
+    total = len(d[axis])
+    d[axis] = [round(v, 4) if isinstance(v, float) else v for v in d[axis][:keep]]
     d["values"] = [round(v, 4) if isinstance(v, float) else v for v in d["values"][:keep]]
     d["_elided"] = f"{total - keep} further samples omitted from this document"
     return d
@@ -281,10 +296,122 @@ costs a round trip and looks like a failure to the person watching.
 """
 
 
+def build_dlis_walkthrough(work: Path) -> str:
+    spec = DLIS_WELLS["DSYNTH-01"]
+    path, _ = generate_dlis(spec, work / "DSYNTH-01.dlis")
+    truth = WellTruth.model_validate_json(dlis_truth_path_for(path).read_text())
+    roots = [work]
+
+    summary = read_dlis_file(str(path), roots)
+    listing = list_dlis_channels(str(path), roots, frame="SONIC")
+    washout = next(iter(truth.defects_for("washout")))
+    assert washout.top is not None and washout.base is not None
+    cali = read_dlis_channel(
+        str(path), "CALI",
+        depth_start=washout.top, depth_stop=washout.base, allowed_paths=roots,
+    )
+
+    # The ambiguity path, shown with the real error rather than described.
+    multi_path, _ = generate_dlis(DLIS_WELLS["DSYNTH-02"], work / "DSYNTH-02.dlis")
+    frame_names = [f.name for lf in summary.logical_files for f in lf.frames]
+
+    return f"""{BANNER}
+
+# Walkthrough: read a DLIS file
+
+DLIS is where the shape of the data stops resembling LAS. One physical file
+holds several *logical files* — separate logging runs — each holding several
+*frames*, each holding *channels*. A channel name is unique only within a
+frame.
+
+That structure is why the DLIS tools take a different shape from the LAS ones,
+and why one of them refuses to answer a question it cannot answer unambiguously.
+
+## Step 1 — what is in the file
+
+> What's in this DLIS? `synthetic_dlis_01.dlis`
+
+The cheap structural call comes first. A real DLIS can carry hundreds of
+channels, so reading them just to describe the file would cost more than the
+answer is worth:
+
+{_fence(summary)}
+
+{summary.total_frames} frames ({", ".join(frame_names)}) carrying
+{summary.total_channels} channels. Each frame has its own index channel and its
+own depth range, because frames are recorded independently — a sonic pass and a
+density pass are not sampled at the same rate, and DLIS does not pretend
+otherwise.
+
+Note what is absent: no channel values. That is the point of this call.
+
+## Step 2 — find the channels you want
+
+> What's on the sonic frame?
+
+{_fence(listing)}
+
+Every row carries its frame and logical file. Without those a listing looks
+addressable but is not, because the same channel name can appear on more than
+one frame.
+
+## Step 3 — read one channel over an interval
+
+The generator planted a washout at {washout.top:.0f}-{washout.base:.0f} ft.
+Passing the interval explicitly disables the default downsample:
+
+{_fence(_trim_curve(cali))}
+
+`downsampled: {str(cali.downsampled).lower()}`, {cali.sample_count} samples,
+caliper above the 8.5 in bit size across the whole interval — the washout, from
+a file whose manifest says it is there.
+
+## When a channel name is ambiguous
+
+`synthetic_dlis_02.dlis` is a two-run file. Ask for a channel that exists in
+more than one place and petromcp does **not** choose:
+
+```text
+{_ambiguity_message(multi_path, work)}
+```
+
+That is deliberate. The values differ between frames, so picking one silently
+would return a plausible wrong answer — the worst possible outcome for a tool a
+model is driving without a human reading every step. Naming the frame resolves
+it.
+
+## What this demonstrates
+
+The three tools form a funnel: structure, then channels, then values. Each step
+narrows what the next one has to read, which is what keeps a format that can
+hold hundreds of channels inside a context window.
+"""
+
+
+def _ambiguity_message(path: Path, work: Path, channel: str = "GR") -> str:
+    """The real refusal text, captured by triggering it.
+
+    Raises rather than returning placeholder text if the file turns out to have
+    no ambiguous channel. An earlier version returned "(no ambiguity in this
+    file)" and cheerfully published a walkthrough that described a behaviour it
+    had not demonstrated — the documented lie this whole build step exists to
+    prevent.
+    """
+    try:
+        read_dlis_channel(str(path), channel, allowed_paths=[work])
+    except AmbiguousChannelError as exc:
+        return str(exc)
+    raise AssertionError(
+        f"{path.name} has no ambiguous channel {channel!r}, so the walkthrough "
+        "cannot show the refusal it describes. Fix the fixture, not this text."
+    )
+
+
 WALKTHROUGHS = {
     "01-qc-a-well-log.md": build_qc_walkthrough,
     "02-compare-two-wells.md": build_compare_walkthrough,
     "03-unit-conversion.md": build_units_walkthrough,
+    "04-read-a-dlis-file.md": build_dlis_walkthrough,
 }
 
 
