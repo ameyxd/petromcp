@@ -15,17 +15,46 @@ all five version locations must agree, the wheel must carry a console script
 matching the distribution name, and the bundle must not use `==`. Every one of
 those is a failure this project actually shipped.
 
-**One-time setup, required before the workflow can publish.** It uses trusted
-publishing, so no API token is stored anywhere:
+### One-time trusted-publishing setup
 
-1. Go to <https://pypi.org/manage/project/petroleum-mcp/settings/publishing/>.
-2. Add a GitHub publisher: owner `ameyxd`, repository `petromcp`, workflow
-   `release.yml`, environment `pypi`.
-3. Create a `pypi` environment under the repository's Settings → Environments.
+No API token is stored anywhere: GitHub mints a short-lived OIDC token per run
+and PyPI verifies it against a publisher you register once.
 
-Until that exists the publish step fails, which is safe — it fails before
-uploading rather than after. To exercise everything except publishing, run the
-workflow manually with `dry_run` left checked.
+**GitHub side — done.** The `pypi` environment exists on the repository, with
+deployments restricted to tag refs (`*.*` and `*.*.*`). That restriction is the
+point, not decoration: without it, anyone able to push a branch could obtain the
+publishing token via `workflow_dispatch`. Do not replace it with
+"all branches". Verify with:
+
+    gh api repos/ameyxd/petromcp/environments/pypi \
+      --jq '{name, policy: .deployment_branch_policy}'
+    gh api repos/ameyxd/petromcp/environments/pypi/deployment-branch-policies \
+      --jq '.branch_policies[] | "\(.type): \(.name)"'
+
+**PyPI side — yours to do.** PyPI has no API for this; the page is session-gated
+web UI, so it cannot be automated. Go to
+<https://pypi.org/manage/project/petroleum-mcp/settings/publishing/> (or Your
+projects → petroleum-mcp → Manage → Publishing) and add a **GitHub** publisher
+with exactly these values. All four must match the workflow or PyPI rejects the
+token with a mismatch error that does not say which field is wrong:
+
+| Field | Value | Where it comes from |
+|---|---|---|
+| Owner | `ameyxd` | the repository owner |
+| Repository name | `petromcp` | the repo, not the PyPI distribution |
+| Workflow name | `release.yml` | the filename, not the `name:` inside it |
+| Environment name | `pypi` | must equal `environment:` in the publish job |
+
+The two easiest mistakes: entering `petroleum-mcp` as the repository (it is the
+package name, not the repo), and entering `release` as the workflow (it is the
+`name:` field, not the filename).
+
+**Verify without publishing.** Run the workflow manually from the Actions tab
+with `dry_run` left checked. That exercises the consistency checks, the full
+test suite on both Python versions, the build, and the wheel's console-script
+assertion, while skipping the publish and release jobs entirely. Until the PyPI
+publisher exists a real tagged run fails at the publish step — before uploading,
+not after, so nothing partial reaches the index.
 
 Run the consistency checks any time without tagging:
 
