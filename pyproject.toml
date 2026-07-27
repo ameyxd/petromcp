@@ -39,6 +39,9 @@ classifiers = [
 dependencies = [
     "fastmcp>=2.0,<3",
     "lasio>=0.31,<0.32",
+    # Pinned, not floated: dlisio is a C++ extension and a version bump can
+    # change parse behaviour. The weekly float job catches upstream drift.
+    "dlisio>=1.0.4,<1.1",
     "pydantic>=2.6,<3",
     "numpy>=1.26",
     "pyyaml>=6.0",
@@ -94,6 +97,8 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.5",
     "pyright>=1.1.370",
+    # Test-data generation only. petromcp itself never writes DLIS.
+    "dliswriter>=1.2,<2",
 ]
 
 [tool.ruff]
