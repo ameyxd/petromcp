@@ -1,7 +1,9 @@
 name: ci
 on:
+  # Every branch, not just main. Feature work that is only verified locally is
+  # verified on one machine, one OS, and one Python — which is how the macOS
+  # .pth quirk and a 3.10-only failure would both go unnoticed until merge.
   push:
-    branches: [main]
   pull_request:
 jobs:
   test:
