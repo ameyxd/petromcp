@@ -236,6 +236,16 @@ def _locate(batch: Any, channel: str, frame: str | None, logical_file: int | Non
                     )
 
     if not matches:
+        # A file carrying only a Storage Unit Label loads cleanly and yields no
+        # logical files — an empty DLIS rather than a corrupt one, typically a
+        # transfer that wrote the label and stopped. Saying "channel not found"
+        # there sends the caller looking for a channel name problem.
+        if not logicals:
+            raise KeyError(
+                "this DLIS file contains no logical files, so it holds no "
+                "channels at all. It is structurally valid but empty, which "
+                "usually means the transfer was truncated."
+            )
         scope = f" in frame {frame!r}" if frame else ""
         raise KeyError(
             f"channel {channel!r} not found{scope}. "
