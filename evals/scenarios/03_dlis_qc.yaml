@@ -1,0 +1,22 @@
+id: "03_dlis_qc"
+name: "DLIS well QC"
+kind: "dlis_qc"
+description: >
+  Build the reference DLIS well and verify petromcp surfaces every defect the
+  generator recorded, plus the frame layout. Expectations are not listed here:
+  they are read from the ground-truth manifest written beside the DLIS, so this
+  scenario cannot go stale when the generator changes.
+
+  The frame assertions are what make this different from scenario 01. A DLIS
+  splits curves across frames with a per-frame index channel, and getting that
+  structure wrong is the most likely DLIS-specific defect.
+input:
+  well: "DSYNTH-01"
+
+# The defect kinds this scenario exists to exercise. Asserted against the
+# generator's manifest, so removing one from the generator fails the eval
+# instead of silently dropping coverage.
+expect_defect_kinds:
+  - null_gap
+  - washout
+  - spike

@@ -45,10 +45,19 @@ def _outside(depth: np.ndarray, top: float, base: float) -> np.ndarray:
 
 
 def test_null_gap_nulls_its_interval() -> None:
+    """Absence is NaN in memory, not the LAS sentinel. Writing -999.25 here
+    would be a real value of minus nine hundred in a DLIS channel."""
     depth, curves = _fixture()
     null_gap(curves, depth, "RHOB", 5020.0, 5030.0)
     inside = (depth >= 5020.0) & (depth <= 5030.0)
-    assert np.all(curves["RHOB"][inside] == NULL_VALUE)
+    assert np.all(np.isnan(curves["RHOB"][inside]))
+
+
+def test_null_gap_does_not_write_the_las_sentinel_into_the_array() -> None:
+    """The LAS encoding belongs to the LAS writer, not the defect injector."""
+    depth, curves = _fixture()
+    null_gap(curves, depth, "RHOB", 5020.0, 5030.0)
+    assert not np.any(curves["RHOB"] == NULL_VALUE)
 
 
 def test_null_gap_leaves_the_rest_of_the_curve_alone() -> None:

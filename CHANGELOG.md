@@ -3,6 +3,84 @@
 All notable changes to petromcp are recorded here. Versions follow
 [semantic versioning](https://semver.org/); tags carry no `v` prefix.
 
+## 0.7.0
+
+DLIS support. The format the LAS slice's structure was never tested against:
+one physical file holds several logging runs, each with several frames, and a
+channel name is unique only within a frame.
+
+### Added
+
+- **`read_dlis_file`** — structure only: logical files, frames, index types,
+  depth ranges, channel counts. A real DLIS carries hundreds of channels, so
+  the cheap structural call comes first.
+- **`list_dlis_channels`** — every channel with its frame and logical file,
+  which is what makes the result addressable. Optional `frame` filter.
+- **`read_dlis_channel`** — one channel's values and index, with the same
+  500-sample cap and explicit-interval behaviour as the LAS equivalent. When a
+  channel name occurs in more than one frame it **fails and lists the
+  candidates** instead of picking one, because the values differ and a guess
+  would be a confidently wrong answer.
+- **Synthetic DLIS wells**, reusing the facies model and defect catalogue
+  unchanged — a DLIS well and a LAS well from the same seed carry the same
+  geology, and a test asserts it. One well spans two logging runs, which LAS
+  cannot express at all.
+- **Bad-DLIS corpus**: every reading tool against every fixture, including a
+  LAS file handed to a DLIS tool. A coverage test fails if a new DLIS tool is
+  added without being registered.
+- **Eval scenario 03**, asserting the DLIS frame layout as well as the defects.
+
+### Changed
+
+- **`qc_a_well_log` no longer claims authority it does not have, and one of its
+  heuristics was wrong.** It described an open-hole triple combo as GR, RHOB,
+  NPHI and DT. A triple combo is resistivity, density and neutron porosity with
+  gamma ray; adding sonic makes it a quad combo — so the prompt demanded a curve
+  that is not part of the suite and omitted the measurement that defines one.
+  Resistivity is now expected, accepting `RESD`, `RT`, `ILD` and similar since
+  contractors name it differently, and sonic is noted rather than flagged.
+
+  Every threshold now lives in `config.qc` with its source and confidence
+  recorded, the prompt is rendered from those values so the two cannot disagree,
+  and the prompt says the bounds are conventional rather than calibrated and
+  asks the model to let the user judge a breach.
+- **The access log rotates.** It grew by a line per tool call forever. It is the
+  audit trail for a tool whose privacy claim is "you can see everything it
+  read", and a file no editor will open is not an audit trail. Defaults to 5 MB
+  with five files kept; `max_bytes: 0` disables rotation.
+- **`petromcp config add-path` takes effect without a host restart.** The
+  allowlist is re-read when the config file changes, and revocation works the
+  same way. This does not change who can grant access — anyone able to edit the
+  config could already have done so on the next restart — and a change to the
+  allowlist is now itself written to the access log. Default-deny is unchanged
+  and covered by tests.
+- **The CLI validates the config through the same model the server uses.** There
+  were two readers: raw `json.loads` here and validated `load_config` there. A
+  malformed config written via the CLI surfaced at server start, where the host
+  swallows the traceback and reports only that the server would not launch.
+  Unknown keys are still preserved, so a newer petromcp's config survives an
+  older one's `add-path`.
+- `null_gap` writes `np.nan` rather than the LAS `-999.25` sentinel. In a DLIS
+  channel that sentinel would be a real measurement of minus nine hundred. Each
+  writer now encodes absence in its own convention; the LAS output is unchanged.
+- Eval scenarios declare `expect_defect_kinds`. Reading expectations from the
+  generator's manifest removes drift but had one blind spot: delete a defect and
+  the manifest stops recording it, so the eval stops checking it and still
+  reports PASS. Coverage disappeared silently. The declared kinds are asserted
+  against the manifest, so that now fails.
+
+### Notes
+
+`dlisio` is a runtime dependency, pinned because it is a C++ extension whose
+parse behaviour can shift on a version bump. `dliswriter` is dev-only —
+petromcp never writes DLIS.
+
+Two things the DLIS work established by testing rather than reading docs.
+`dliswriter` cannot emit more than one logical file, but concatenating its
+output with the trailing Storage Unit Labels stripped produces a valid
+multi-run file. And a DLIS carrying only a Storage Unit Label loads cleanly with
+zero logical files — valid but empty, reported as such rather than refused.
+
 ## 0.6.0
 
 ### Added

@@ -40,8 +40,20 @@ folder picker and pass what you chose. It is not a bypass: it grants the
 same kind of access as the config file, and it can only be set by whoever
 already controls how the server is launched on your machine.
 
-Both sources are read once, at startup. Changing either requires restarting
-the host.
+**When changes take effect.** The config file is re-read when it changes, so
+`petromcp config add-path` and `remove-path` apply to the next tool call without
+restarting the host. Removing a directory revokes access the same way; the
+allowlist is never widened by a stale copy.
+
+`--allow-path` grants are fixed for the life of the process, because process
+arguments are.
+
+This does not change *who* can grant access. Anyone able to edit
+`~/.petromcp/config.json` could already have granted themselves the same access
+on the next restart — the only difference is that they no longer wait for one.
+Every read still passes the same validator, and a change to the allowlist is
+itself written to the access log, so the audit trail shows the permission change
+and not merely the reads that follow it.
 
 A request to read any file outside the resulting list returns an error, and
 the LLM sees the error, not the file contents.
@@ -50,8 +62,24 @@ the LLM sees the error, not the file contents.
 
 Access logging is on by default. The log file lives at
 `~/.petromcp/access.log` and records every tool call with timestamp,
-tool name, and resolved path. You can disable logging in the config file
-or change the log location.
+tool name, and resolved path, plus any change to the allowlist. You can disable
+logging in the config file or change the log location.
+
+The log rotates, at 5 MB with five files kept — roughly 250,000 tool calls of
+history. An audit trail that grows until no editor will open it is not an audit
+trail. Both figures are configurable:
+
+    {
+      "logging": {
+        "enabled": true,
+        "log_file": "~/.petromcp/access.log",
+        "max_bytes": 5242880,
+        "backup_count": 5
+      }
+    }
+
+Setting `max_bytes` to 0 disables rotation if you would rather keep one
+unbroken file, or your own log shipper handles rotation.
 
 ## Sample data
 

@@ -9,3 +9,11 @@ description: >
   cannot go stale when the generator changes.
 input:
   well: "SYNTH-01"
+
+# The defect kinds this scenario exists to exercise. Asserted against the
+# generator's manifest, so removing one from the generator fails the eval
+# instead of silently dropping coverage.
+expect_defect_kinds:
+  - null_gap
+  - washout
+  - spike

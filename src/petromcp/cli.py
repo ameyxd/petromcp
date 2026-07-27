@@ -12,6 +12,10 @@ import json
 import sys
 from pathlib import Path
 
+from pydantic import ValidationError
+
+from petromcp.config import Config
+
 CLAUDE_DESKTOP_CONFIG = (
     Path("~/Library/Application Support/Claude/claude_desktop_config.json").expanduser()
 )
@@ -51,12 +55,52 @@ def uninstall_from_config(config_path: Path, server_name: str) -> None:
 
 
 def _read_user_config(path: Path) -> dict[str, object]:
+    """Read the config, validating it through the same model the server uses.
+
+    There used to be two readers: this one, raw `json.loads`, and
+    `config.load_config`, which validates. A malformed config written or edited
+    here therefore surfaced at server start rather than at the moment it was
+    written — the worst place to learn, since the host swallows the traceback and
+    reports only that the server would not launch.
+
+    Returns the raw mapping (so `config` subcommands can round-trip unknown keys
+    rather than silently dropping them) but raises here if it would not load.
+    """
     if not path.exists():
         return dict(DEFAULT_USER_CONFIG)
-    return json.loads(path.read_text())  # type: ignore[no-any-return]
+
+    try:
+        raw = json.loads(path.read_text())
+    except json.JSONDecodeError as exc:
+        raise SystemExit(
+            f"petromcp: {path} is not valid JSON ({exc}). "
+            "Fix it, or remove it and run `petromcp config init`."
+        ) from exc
+    if not isinstance(raw, dict):
+        raise SystemExit(f"petromcp: {path} must contain a JSON object, not {type(raw).__name__}.")
+
+    # Same validation the server performs, so a bad value fails here.
+    try:
+        Config.model_validate(raw)
+    except ValidationError as exc:
+        raise SystemExit(
+            f"petromcp: {path} is not a usable config.\n{exc}"
+        ) from exc
+    return raw
 
 
 def _write_user_config(path: Path, data: dict[str, object]) -> None:
+    """Write the config, refusing to leave an unusable one on disk.
+
+    Validating before writing means a bad `add-path` cannot produce a file that
+    breaks the next server start.
+    """
+    try:
+        Config.model_validate(data)
+    except ValidationError as exc:
+        raise SystemExit(
+            f"petromcp: refusing to write an invalid config.\n{exc}"
+        ) from exc
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2))
 

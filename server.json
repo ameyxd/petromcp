@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.ameyxd/petromcp",
   "title": "petromcp",
-  "description": "Local-first MCP server for petroleum data. Reads LAS well logs behind a default-deny path allowlist: header summaries, per-curve statistics, curve values, well-to-well comparison, and unit conversion.",
-  "version": "0.6.0",
+  "description": "Local-first MCP server for petroleum data. Reads LAS well logs and DLIS files behind a default-deny path allowlist: structure, per-curve statistics, channel values, well comparison, and unit conversion.",
+  "version": "0.7.0",
   "repository": {
     "url": "https://github.com/ameyxd/petromcp",
     "source": "github"
@@ -14,7 +14,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "petroleum-mcp",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

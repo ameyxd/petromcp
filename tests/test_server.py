@@ -22,6 +22,9 @@ EXPECTED_TOOLS = {
     "compare_well_logs",
     "convert_units",
     "list_supported_units",
+    "read_dlis_file",
+    "list_dlis_channels",
+    "read_dlis_channel",
 }
 
 

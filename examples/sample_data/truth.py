@@ -107,6 +107,13 @@ class WellTruth(BaseModel):
     curves: list[str]
     beds: list[Bed]
     defects: list[DefectRecord]
+    #: Frame name -> channel names, for formats that group curves into frames.
+    #: Empty for LAS, which has one flat curve set. DLIS uses it, and it is what
+    #: lets the eval assert the structure and not just the values.
+    frames: dict[str, list[str]] = {}
+    #: Frame name -> that frame's index channel. RP66 forbids sharing a channel
+    #: between frames, so each frame has its own and the names differ.
+    frame_indexes: dict[str, str] = {}
 
     def defects_for(self, kind: DefectKind) -> list[DefectRecord]:
         return [d for d in self.defects if d.kind == kind]
