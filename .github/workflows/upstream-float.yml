@@ -27,39 +27,64 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install with every pin relaxed
+      # A virtualenv, not `--system`. The runner's Python is Debian-packaged and
+      # externally managed (PEP 668), so `uv pip install --system` fails outright
+      # — which is how the first scheduled run died at install, skipped every
+      # later step, and reported a red badge with no explanation of what broke.
+      - name: Build an environment with every pin relaxed
         id: install
+        continue-on-error: true
         run: |
-          # `--upgrade` alone respects the pins, so the constraint markers are
-          # stripped. The unpinned set is what a user gets on a fresh install
-          # once upstream moves.
-          uv pip install --system \
-            "fastmcp" "lasio" "dlisio" "pydantic" "numpy" "pyyaml" \
-            pytest ruff pyright dliswriter
-          uv pip install --system --no-deps -e .
+          uv venv
+          # Named without constraints on purpose: this is what a user gets on a
+          # fresh install once these versions are the current ones.
+          uv pip install \
+            fastmcp lasio dlisio pydantic numpy pyyaml \
+            pytest dliswriter
+          uv pip install --no-deps -e .
           {
             echo "versions<<EOF"
-            uv pip list --system | grep -iE "^(fastmcp|lasio|dlisio|pydantic|numpy) " || true
+            uv pip list | grep -iE "^(fastmcp|lasio|dlisio|pydantic|numpy|dliswriter) " || true
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
       - name: Suite against unpinned upstreams
         id: suite
+        if: steps.install.outcome == 'success'
         continue-on-error: true
-        run: pytest -q
+        run: .venv/bin/python -m pytest -q
 
       - name: Evals against unpinned upstreams
         id: evals
+        if: steps.install.outcome == 'success'
         continue-on-error: true
-        run: python -m evals.run_eval --all
+        run: .venv/bin/python -m evals.run_eval --all
 
-      - name: Open an issue when upstream has broken us
-        if: steps.suite.outcome == 'failure' || steps.evals.outcome == 'failure'
+      - name: Decide whether anything is wrong
+        id: verdict
+        run: |
+          # Install failing counts. The first run failed there and opened
+          # nothing, because the issue step only considered the suite and the
+          # evals — both of which had been skipped, not failed.
+          failed=false
+          reasons=""
+          if [ "${{ steps.install.outcome }}" != "success" ]; then
+            failed=true
+            reasons="${reasons}- could not install the unpinned dependency set at all\n"
+          else
+            [ "${{ steps.suite.outcome }}" != "success" ] && { failed=true; reasons="${reasons}- test suite failed\n"; }
+            [ "${{ steps.evals.outcome }}" != "success" ] && { failed=true; reasons="${reasons}- eval scenarios failed\n"; }
+          fi
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
+          printf "reasons<<EOF\n%b\nEOF\n" "$reasons" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update the tracking issue
+        if: steps.verdict.outputs.failed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           title="Upstream float: petromcp fails against latest dependencies"
-          # One open issue, updated, rather than a new one every Monday.
+          # One open issue, updated weekly, rather than a new one every Monday.
           existing="$(gh issue list --state open --search "$title in:title" \
             --json number --jq '.[0].number // empty')"
           body="$(cat <<EOF
@@ -67,8 +92,12 @@ jobs:
           released versions are unaffected — but a user installing fresh once
           these versions are common will hit this.
 
-          - test suite: \`${{ steps.suite.outcome }}\`
-          - eval scenarios: \`${{ steps.evals.outcome }}\`
+          What went wrong:
+
+          ${{ steps.verdict.outputs.reasons }}
+
+          Step outcomes: install \`${{ steps.install.outcome }}\`, suite
+          \`${{ steps.suite.outcome }}\`, evals \`${{ steps.evals.outcome }}\`.
 
           Versions under test:
 
@@ -82,10 +111,24 @@ jobs:
           if [ -n "$existing" ]; then
             gh issue comment "$existing" --body "$body"
           else
-            gh issue create --title "$title" --body "$body" --label dependencies || \
+            gh issue create --title "$title" --body "$body" --label dependencies 2>/dev/null || \
               gh issue create --title "$title" --body "$body"
           fi
 
+      - name: Close the tracking issue once upstream is clean again
+        if: steps.verdict.outputs.failed == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Otherwise a fixed problem leaves an open issue nobody trusts.
+          existing="$(gh issue list --state open \
+            --search "Upstream float: petromcp fails against latest dependencies in:title" \
+            --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "Unpinned run is green again as of [this run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}). Closing."
+            gh issue close "$existing"
+          fi
+
       - name: Fail the run so the badge reflects reality
-        if: steps.suite.outcome == 'failure' || steps.evals.outcome == 'failure'
+        if: steps.verdict.outputs.failed == 'true'
         run: exit 1

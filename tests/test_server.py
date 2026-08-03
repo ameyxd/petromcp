@@ -10,10 +10,10 @@ the suite — `asyncio.run` keeps them sync rather than pulling in
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from petromcp.server import build_app
+from tests.conftest import registered_prompts, registered_tools
 
 EXPECTED_TOOLS = {
     "read_las_file",
@@ -29,7 +29,7 @@ EXPECTED_TOOLS = {
 
 
 def _tools() -> dict[str, Any]:
-    return asyncio.run(build_app(allowed_paths=[]).get_tools())
+    return registered_tools(build_app(allowed_paths=[]))
 
 
 def test_server_module_imports() -> None:
@@ -55,8 +55,7 @@ def test_every_tool_is_annotated_read_only_and_closed_world() -> None:
 
 
 def test_registers_the_qc_prompt() -> None:
-    prompts = asyncio.run(build_app(allowed_paths=[]).get_prompts())
-    assert "qc_a_well_log" in prompts
+    assert "qc_a_well_log" in registered_prompts(build_app(allowed_paths=[]))
 
 
 def test_advertises_petromcps_own_version_not_fastmcps() -> None:

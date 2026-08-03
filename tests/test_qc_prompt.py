@@ -121,12 +121,10 @@ def test_module_level_template_matches_the_default_render() -> None:
 
 
 def test_the_server_serves_the_configured_prompt() -> None:
-    import asyncio
-
     from petromcp.server import build_app
+    from tests.conftest import registered_prompts
 
-    prompts = asyncio.run(build_app(allowed_paths=[]).get_prompts())
-    assert PROMPT_NAME in prompts
+    assert PROMPT_NAME in registered_prompts(build_app(allowed_paths=[]))
 
 
 @pytest.mark.parametrize(

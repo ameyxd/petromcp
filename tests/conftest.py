@@ -7,6 +7,7 @@ binary fixtures. The fixture is deterministic — same input, same bytes.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import lasio
 import numpy as np
@@ -52,3 +53,36 @@ def tiny_las(tmp_path: Path) -> Path:
 def allowlist(tmp_path: Path) -> list[Path]:
     """A single-entry allowlist rooted at tmp_path."""
     return [tmp_path]
+
+
+# --- FastMCP introspection, across major versions -----------------------------
+#
+# The registered tools and prompts are read through a shim because FastMCP
+# renamed this API between 2.x and 3.x:
+#
+#     2.x: app.get_tools()  -> dict[name, Tool]
+#     3.x: app.list_tools() -> list[Tool]
+#
+# Both hand back the same objects; only the container differs. The tests care
+# about what the server registers, not about which accessor the library happens
+# to expose this year, and coupling them to that detail meant a FastMCP major
+# bump broke four tests while the server itself kept working perfectly over the
+# real protocol.
+
+
+def registered_tools(app: Any) -> dict[str, Any]:
+    """Every registered tool, keyed by name, on any supported FastMCP."""
+    import asyncio
+
+    if hasattr(app, "get_tools"):  # FastMCP 2.x
+        return asyncio.run(app.get_tools())
+    return {tool.name: tool for tool in asyncio.run(app.list_tools())}
+
+
+def registered_prompts(app: Any) -> dict[str, Any]:
+    """Every registered prompt, keyed by name, on any supported FastMCP."""
+    import asyncio
+
+    if hasattr(app, "get_prompts"):  # FastMCP 2.x
+        return asyncio.run(app.get_prompts())
+    return {prompt.name: prompt for prompt in asyncio.run(app.list_prompts())}
